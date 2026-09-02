@@ -23,22 +23,21 @@ body {
     color: var(--text-primary);
     line-height: 1.6;
     min-height: 100vh;
-    padding: 2rem 1rem;
     position: relative;
     overflow-x: hidden;
 }
 
 .background-shape {
-    position: absolute;
-    width: 300px;
-    height: 300px;
+    position: fixed;
+    width: 320px;
+    height: 320px;
     background: linear-gradient(180deg, #a78bfa 0%, #f472b6 100%);
     filter: blur(80px);
     border-radius: 50%;
     top: -50px;
     left: -50px;
     z-index: -1;
-    opacity: 0.4;
+    opacity: 0.45;
     animation: float 10s infinite ease-in-out;
 }
 
@@ -61,13 +60,208 @@ body {
     }
 }
 
+.hidden {
+    display: none !important;
+}
+
+/* ============================================== */
+/* 1. ログイン画面スタイル (Auth View) */
+/* ============================================== */
+.auth-view-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    animation: fadeIn 0.4s ease;
+}
+
+.auth-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    padding: 2.5rem;
+    border-radius: 24px;
+    box-shadow: 0 12px 40px rgba(31, 38, 135, 0.12);
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+}
+
+.auth-logo {
+    font-size: 2.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.auth-card-header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.35rem;
+}
+
+.auth-card-header p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.75rem;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.auth-form .input-group input {
+    width: 100%;
+    padding: 1rem 1.25rem;
+    border: 2px solid transparent;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--text-primary);
+    transition: all 0.25s ease;
+}
+
+.auth-form .input-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: white;
+    border: none;
+    padding: 0.95rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: inherit;
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(139, 92, 246, 0.45);
+}
+
+.primary-btn:active {
+    transform: translateY(0);
+}
+
+.auth-switch {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin-top: 0.75rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.auth-switch a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.auth-switch a:hover {
+    text-decoration: underline;
+}
+
+/* ============================================== */
+/* 2. メインチャット画面スタイル */
+/* ============================================== */
+.main-chat-view {
+    padding: 1.5rem 1rem 3rem;
+    animation: fadeIn 0.4s ease;
+}
+
+/* トップバー */
+.top-nav-bar {
+    max-width: 600px;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.online-counter-badge {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.45rem 0.9rem;
+    border-radius: 50px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.user-profile-badge {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.45rem 1rem;
+    border-radius: 50px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.user-profile-info {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.user-name-text {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.logout-btn-header {
+    background: none;
+    border: none;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+    transition: color 0.2s;
+}
+
+.logout-btn-header:hover {
+    color: #be185d;
+    text-decoration: underline;
+}
+
 .container {
     max-width: 600px;
     margin: 0 auto;
 }
 
 .main-content-container {
-    margin-top: 2.5rem;
+    margin-top: 0.5rem;
 }
 
 .input-card {
@@ -110,13 +304,16 @@ textarea:focus {
     box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
 }
 
+input[readonly] {
+    background: rgba(243, 244, 246, 0.8);
+    cursor: default;
+    color: #4b5563;
+    font-weight: 600;
+}
+
 textarea {
     resize: none;
     min-height: 100px;
-}
-
-button {
-    font-family: inherit;
 }
 
 /* 入力アクションバー */
@@ -128,7 +325,7 @@ button {
 }
 
 .attach-image-btn {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.85);
     color: var(--text-secondary);
     border: 1px solid var(--glass-border);
     padding: 0.65rem 1.25rem;
@@ -413,84 +610,6 @@ button#sendBtn:disabled {
     padding: 2rem;
 }
 
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* オンラインカウンター & 認証コンテナ */
-.online-counter,
-.auth-container {
-    position: fixed;
-    top: 1rem;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    padding: 0.5rem 1rem;
-    border-radius: 50px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    transition: all 0.3s ease;
-}
-
-.online-counter {
-    right: 1rem;
-}
-
-.auth-container {
-    left: 1rem;
-}
-
-.online-counter:hover,
-.auth-container:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-}
-
-.auth-btn,
-.logout-btn {
-    background: none;
-    border: none;
-    font-weight: 700;
-    cursor: pointer;
-    color: var(--primary-color);
-    padding: 0;
-    box-shadow: none;
-}
-
-.auth-btn:hover,
-.logout-btn:hover {
-    color: var(--accent-color);
-    transform: none;
-}
-
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.user-name {
-    color: var(--text-primary);
-}
-
-.hidden {
-    display: none !important;
-}
-
 .status-dot {
     width: 10px;
     height: 10px;
@@ -509,6 +628,28 @@ button#sendBtn:disabled {
     }
     100% {
         box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
@@ -603,92 +744,6 @@ button#sendBtn:disabled {
     }
 }
 
-.auth-modal {
-    width: 400px;
-}
-
-.auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.primary-btn {
-    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 12px;
-    font-weight: 700;
-    font-size: 0.95rem;
-    cursor: pointer;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.primary-btn:hover {
-    opacity: 0.95;
-    transform: translateY(-1px);
-}
-
-.auth-switch {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    margin-top: 0.5rem;
-    text-align: center;
-}
-
-.auth-switch a {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 700;
-}
-
-.auth-switch a:hover {
-    text-decoration: underline;
-}
-
-.close-btn {
-    position: absolute;
-    top: 1rem;
-    right: 1.25rem;
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: color 0.2s;
-    box-shadow: none;
-}
-
-.close-btn:hover {
-    color: var(--text-primary);
-}
-
-.tos-body {
-    margin-top: 1rem;
-    max-height: 60vh;
-    overflow-y: auto;
-    font-size: 0.9rem;
-    line-height: 1.8;
-}
-
-.tos-body h1 {
-    font-size: 1.1rem;
-    margin-bottom: 0.75rem;
-    color: var(--primary-color);
-}
-
-.tos-body h2 {
-    font-size: 0.95rem;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-}
-
 .modal-actions {
     display: flex;
     justify-content: flex-end;
@@ -725,20 +780,16 @@ button#sendBtn:disabled {
 }
 
 @media (max-width: 480px) {
-    body {
-        padding: 1rem 0.75rem;
+    .main-chat-view {
+        padding: 1rem 0.75rem 2rem;
     }
     .input-card {
         padding: 1.25rem;
     }
-    .online-counter {
-        top: auto;
-        bottom: 1rem;
-        right: 1rem;
-        font-size: 0.8rem;
+    .top-nav-bar {
+        margin-bottom: 1rem;
     }
-    .auth-container {
-        top: 0.5rem;
-        left: 0.5rem;
+    .auth-card {
+        padding: 2rem 1.5rem;
     }
 }

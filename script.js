@@ -15,28 +15,42 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Client ID for identifying user's posts (Legacy/Fallback)
-let clientId = localStorage.getItem('othelloClientId');
-if (!clientId) {
-    clientId = 'user_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('othelloClientId', clientId);
-}
-
 // Global user state
 let currentUser = null;
 
+// --- 画面切り替え要素 ---
+const authView = document.getElementById('authView');
+const mainChatView = document.getElementById('mainChatView');
+
+// --- 認証要素 ---
+const authForm = document.getElementById('authForm');
+const authTitle = document.getElementById('authTitle');
+const authSubtitle = document.getElementById('authSubtitle');
+const authUsernameInput = document.getElementById('authUsername');
+const authPasswordInput = document.getElementById('authPassword');
+const authSubmitBtn = document.getElementById('authSubmitBtn');
+const switchToRegister = document.getElementById('switchToRegister');
+const authSwitchPrompt = document.getElementById('authSwitchPrompt');
+const displayUserName = document.getElementById('displayUserName');
+const logoutBtn = document.getElementById('logoutBtn');
+
+let isRegisterMode = false;
+
+// --- チャット要素 ---
 const nameInput = document.getElementById('nameInput');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
 const messagesContainer = document.getElementById('messagesContainer');
-if (!messagesContainer) {
-    console.error("Critical Error: 'messagesContainer' element not found in the DOM.");
-}
+const deleteAllBtn = document.getElementById('deleteAllBtn');
+const adminDeleteBtn = document.getElementById('adminDeleteBtn');
+
+// --- モーダル要素 ---
 const deleteModal = document.getElementById('deleteModal');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+let deleteTargetId = null;
 
-// 画像関連要素
+// --- 画像関連要素 ---
 const attachImageBtn = document.getElementById('attachImageBtn');
 const imageInput = document.getElementById('imageInput');
 const imagePreviewContainer = document.getElementById('imagePreviewContainer');
@@ -45,27 +59,135 @@ const removeImageBtn = document.getElementById('removeImageBtn');
 const imageModal = document.getElementById('imageModal');
 const modalImage = document.getElementById('modalImage');
 const closeImageModalBtn = document.getElementById('closeImageModalBtn');
-
-// 選択中の画像データ (Base64)
 let currentImageBase64 = null;
 
-// Auth elements
-const loginModal = document.getElementById('loginModal');
-const loginOpenBtn = document.getElementById('loginOpenBtn');
-const closeLoginBtn = document.getElementById('closeLoginBtn');
-const authUsernameInput = document.getElementById('authUsername');
-const authPasswordInput = document.getElementById('authPassword');
-const authSubmitBtn = document.getElementById('authSubmitBtn');
-const switchToRegister = document.getElementById('switchToRegister');
-const authModalTitle = document.getElementById('authModalTitle');
-const userInfo = document.getElementById('userInfo');
-const displayUserName = document.getElementById('displayUserName');
-const logoutBtn = document.getElementById('logoutBtn');
+// ==============================================================================
+// 1. 認証システム (Firebase Auth)
+// ==============================================================================
+const USERNAME_SUFFIX = "@play-app.local";
 
-let isRegisterMode = false;
-let deleteTargetId = null;
+function usernameToEmail(username) {
+    return `${username.toLowerCase().trim()}${USERNAME_SUFFIX}`;
+}
 
-// --- 画像処理（選択・自動リサイズ・圧縮） ---
+function updateAuthUI() {
+    if (isRegisterMode) {
+        authTitle.innerText = '新規登録';
+        authSubtitle.innerText = '新しいアカウントを作成してチャットをはじめよう';
+        authSubmitBtn.innerText = 'アカウントを作成する';
+        switchToRegister.innerText = 'ログインに戻る';
+        authSwitchPrompt.innerText = '既にアカウントをお持ちですか？';
+    } else {
+        authTitle.innerText = 'ログイン';
+        authSubtitle.innerText = 'チャットに参加するにはログインしてください';
+        authSubmitBtn.innerText = 'ログインする';
+        switchToRegister.innerText = '新規登録';
+        authSwitchPrompt.innerText = 'アカウントをお持ちでないですか？';
+    }
+}
+
+if (switchToRegister) {
+    switchToRegister.addEventListener('click', (e) => {
+        e.preventDefault();
+        isRegisterMode = !isRegisterMode;
+        updateAuthUI();
+    });
+}
+
+// ログイン / 新規登録処理
+async function handleAuthSubmit() {
+    const username = authUsernameInput.value.trim();
+    const password = authPasswordInput.value;
+
+    if (!username || !password) {
+        alert("ユーザー名とパスワードを入力してください。");
+        return;
+    }
+
+    if (password.length < 6) {
+        alert("パスワードは6文字以上で入力してください。");
+        return;
+    }
+
+    const email = usernameToEmail(username);
+    authSubmitBtn.disabled = true;
+    const originalText = authSubmitBtn.innerText;
+    authSubmitBtn.innerText = '処理中...';
+
+    try {
+        if (isRegisterMode) {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            await updateProfile(userCredential.user, { displayName: username });
+            alert("アカウントを作成しました！");
+        } else {
+            await signInWithEmailAndPassword(auth, email, password);
+        }
+        authUsernameInput.value = '';
+        authPasswordInput.value = '';
+    } catch (error) {
+        console.error("Auth error:", error);
+        if (error.code === 'auth/email-already-in-use') {
+            alert("このユーザー名は既に使われています。");
+        } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+            alert("ユーザー名またはパスワードが違います。");
+        } else {
+            alert("エラーが発生しました: " + error.message);
+        }
+    } finally {
+        authSubmitBtn.disabled = false;
+        authSubmitBtn.innerText = originalText;
+    }
+}
+
+if (authForm) {
+    authForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleAuthSubmit();
+    });
+}
+
+if (authSubmitBtn) {
+    authSubmitBtn.addEventListener('click', handleAuthSubmit);
+}
+
+// ログアウト処理
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+        if (confirm("ログアウトしますか？")) {
+            signOut(auth);
+        }
+    });
+}
+
+// 認証状態の監視 (画面の切り替え)
+onAuthStateChanged(auth, (user) => {
+    currentUser = user;
+    if (user) {
+        // ログイン状態: チャット画面を表示
+        authView.classList.add('hidden');
+        mainChatView.classList.remove('hidden');
+
+        const name = user.displayName || user.email.split('@')[0];
+        displayUserName.innerText = name;
+        if (nameInput) {
+            nameInput.value = name;
+            nameInput.readOnly = true;
+        }
+    } else {
+        // 未ログイン状態: ログイン画面を表示
+        authView.classList.remove('hidden');
+        mainChatView.classList.add('hidden');
+
+        displayUserName.innerText = '';
+        if (nameInput) {
+            nameInput.value = '';
+        }
+    }
+});
+
+// ==============================================================================
+// 2. 画像添付 & 拡大表示
+// ==============================================================================
 if (imageInput) {
     imageInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
@@ -100,7 +222,6 @@ function clearSelectedImage() {
     if (imagePreviewContainer) imagePreviewContainer.classList.add('hidden');
 }
 
-// Canvasを使った画像リサイズ・圧縮
 function resizeAndCompressImage(file, maxWidth, maxHeight, quality) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -128,7 +249,6 @@ function resizeAndCompressImage(file, maxWidth, maxHeight, quality) {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // JPEG形式で圧縮
                 const dataUrl = canvas.toDataURL('image/jpeg', quality);
                 resolve(dataUrl);
             };
@@ -140,7 +260,6 @@ function resizeAndCompressImage(file, maxWidth, maxHeight, quality) {
     });
 }
 
-// 画像拡大モーダル制御
 function openImageModal(src) {
     if (imageModal && modalImage) {
         modalImage.src = src;
@@ -167,8 +286,9 @@ if (imageModal) {
     });
 }
 
-
-// --- 削除確認モーダル ---
+// ==============================================================================
+// 3. 削除確認モーダル
+// ==============================================================================
 function openDeleteModal(id) {
     deleteTargetId = id;
     deleteModal.classList.add('active');
@@ -188,125 +308,6 @@ if (deleteModal) {
         if (e.target === deleteModal) closeDeleteModal();
     });
 }
-
-// Auth Logic
-const USERNAME_SUFFIX = "@play-app.local";
-
-function usernameToEmail(username) {
-    return `${username.toLowerCase().trim()}${USERNAME_SUFFIX}`;
-}
-
-function openLoginModal() {
-    loginModal.classList.add('active');
-    isRegisterMode = false;
-    updateAuthModalUI();
-}
-
-function closeLoginModal() {
-    loginModal.classList.remove('active');
-    authUsernameInput.value = '';
-    authPasswordInput.value = '';
-}
-
-function updateAuthModalUI() {
-    if (isRegisterMode) {
-        authModalTitle.innerText = '新規登録';
-        authSubmitBtn.innerText = 'アカウントを作成する';
-        switchToRegister.innerText = 'ログインに戻る';
-        document.querySelector('.auth-switch').firstChild.textContent = '既にアカウントをお持ちですか？ ';
-    } else {
-        authModalTitle.innerText = 'ログイン';
-        authSubmitBtn.innerText = 'ログインする';
-        switchToRegister.innerText = '新規登録';
-        document.querySelector('.auth-switch').firstChild.textContent = 'アカウントをお持ちでないですか？ ';
-    }
-}
-
-if (switchToRegister) {
-    switchToRegister.addEventListener('click', (e) => {
-        e.preventDefault();
-        isRegisterMode = !isRegisterMode;
-        updateAuthModalUI();
-    });
-}
-
-if (loginOpenBtn) loginOpenBtn.addEventListener('click', openLoginModal);
-if (closeLoginBtn) closeLoginBtn.addEventListener('click', closeLoginModal);
-
-if (authSubmitBtn) {
-    authSubmitBtn.addEventListener('click', async () => {
-        const username = authUsernameInput.value.trim();
-        const password = authPasswordInput.value;
-
-        if (!username || !password) {
-            alert("ユーザー名とパスワードを入力してください。");
-            return;
-        }
-
-        if (password.length < 6) {
-            alert("パスワードは6文字以上で入力してください。");
-            return;
-        }
-
-        const email = usernameToEmail(username);
-        authSubmitBtn.disabled = true;
-        const originalText = authSubmitBtn.innerText;
-        authSubmitBtn.innerText = '処理中...';
-
-        try {
-            if (isRegisterMode) {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                await updateProfile(userCredential.user, { displayName: username });
-                alert("アカウントを作成しました！");
-            } else {
-                await signInWithEmailAndPassword(auth, email, password);
-                alert("ログインしました！");
-            }
-            closeLoginModal();
-        } catch (error) {
-            console.error("Auth error:", error);
-            if (error.code === 'auth/email-already-in-use') {
-                alert("このユーザー名は既に使われています。");
-            } else if (error.code === 'auth/invalid-credential') {
-                alert("ユーザー名またはパスワードが違います。");
-            } else {
-                alert("エラーが発生しました: " + error.message);
-            }
-        } finally {
-            authSubmitBtn.disabled = false;
-            authSubmitBtn.innerText = originalText;
-        }
-    });
-}
-
-if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-        if (confirm("ログアウトしますか？")) {
-            signOut(auth);
-        }
-    });
-}
-
-onAuthStateChanged(auth, (user) => {
-    currentUser = user;
-    if (user) {
-        if (loginOpenBtn) loginOpenBtn.classList.add('hidden');
-        if (userInfo) userInfo.classList.remove('hidden');
-        if (displayUserName) displayUserName.innerText = user.displayName || user.email.split('@')[0];
-        if (nameInput) {
-            nameInput.value = user.displayName || '';
-            nameInput.readOnly = true;
-        }
-    } else {
-        if (loginOpenBtn) loginOpenBtn.classList.remove('hidden');
-        if (userInfo) userInfo.classList.add('hidden');
-        if (displayUserName) displayUserName.innerText = '';
-        if (nameInput) {
-            nameInput.value = '';
-            nameInput.readOnly = false;
-        }
-    }
-});
 
 if (confirmDeleteBtn) {
     confirmDeleteBtn.addEventListener('click', async () => {
@@ -330,9 +331,16 @@ if (confirmDeleteBtn) {
     });
 }
 
-// --- メッセージ送信 ---
+// ==============================================================================
+// 4. メッセージ送信 & リアルタイム同期
+// ==============================================================================
 async function sendMessage() {
-    const name = nameInput.value.trim() || '名無しさん';
+    if (!currentUser) {
+        alert("ログインしてください！");
+        return;
+    }
+
+    const name = currentUser.displayName || currentUser.email.split('@')[0];
     const content = messageInput.value.trim();
     const image = currentImageBase64;
 
@@ -349,8 +357,9 @@ async function sendMessage() {
             name: name,
             content: content,
             timestamp: serverTimestamp(),
-            clientId: currentUser ? currentUser.uid : clientId,
-            uid: currentUser ? currentUser.uid : null
+            clientId: currentUser.uid,
+            uid: currentUser.uid,
+            locked: false
         };
 
         if (image) {
@@ -382,7 +391,7 @@ if (messageInput) {
     });
 }
 
-// --- メッセージのリアルタイム購読 ---
+// メッセージリアルタイム購読
 const q = query(collection(db, "messages"), orderBy("timestamp", "desc"));
 
 onSnapshot(q, (snapshot) => {
@@ -401,19 +410,19 @@ onSnapshot(q, (snapshot) => {
     });
 });
 
-const deleteAllBtn = document.getElementById('deleteAllBtn');
+// 一括削除
 if (deleteAllBtn) {
     deleteAllBtn.addEventListener('click', async () => {
+        if (!currentUser) return;
         if (!confirm('本当に自分の投稿を全て削除しますか？')) return;
 
         deleteAllBtn.disabled = true;
         deleteAllBtn.innerText = '削除中...';
 
         try {
-            const uid = currentUser ? currentUser.uid : clientId;
             const q = query(
                 collection(db, "messages"),
-                where(currentUser ? "uid" : "clientId", "==", uid)
+                where("uid", "==", currentUser.uid)
             );
 
             const snapshot = await getDocs(q);
@@ -433,7 +442,7 @@ if (deleteAllBtn) {
                 const data = docSnap.data();
                 if (data.locked) {
                     lockedCount++;
-                    return; // Skip locked
+                    return;
                 }
 
                 deletePromises.push(deleteDoc(doc(db, "messages", docSnap.id)));
@@ -456,7 +465,7 @@ if (deleteAllBtn) {
     });
 }
 
-const adminDeleteBtn = document.getElementById('adminDeleteBtn');
+// 管理者全削除 (パスワード: 3141592)
 if (adminDeleteBtn) {
     adminDeleteBtn.addEventListener('click', async () => {
         const password = prompt('管理者機能: 全投稿を削除するためのパスワードを入力してください');
@@ -511,7 +520,7 @@ async function updateLockStatus(id, newStatus) {
     }
 }
 
-// --- メッセージ要素描画 ---
+// メッセージ描画
 function renderMessage(message, id) {
     const div = document.createElement('div');
     div.classList.add('message-card');
@@ -533,10 +542,9 @@ function renderMessage(message, id) {
 
     const initial = ((message.name || message.content || '名') + '').charAt(0);
     const isLocked = message.locked === true;
-    const currentUid = currentUser ? currentUser.uid : clientId;
-    const isMyMessage = (message.uid === currentUid) || (message.clientId === currentUid);
+    const isMyMessage = currentUser && (message.uid === currentUser.uid);
 
-    // Lock UI
+    // ロックUI
     const lockBtnHtml = isMyMessage
         ? `<button class="lock-btn ${isLocked ? 'locked' : ''}" title="${isLocked ? 'ロック解除' : 'ロックする'}">
              ${isLocked ? '🔒' : '🔓'}
@@ -630,8 +638,6 @@ function renderMessage(message, id) {
 
     if (messagesContainer) {
         messagesContainer.appendChild(div);
-    } else {
-        console.error("Cannot append message: messagesContainer is missing.");
     }
 }
 

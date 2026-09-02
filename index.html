@@ -16,18 +16,107 @@
     <div class="background-shape"></div>
     <div class="background-shape shape-2"></div>
 
-    <!-- オンラインカウンター -->
-    <div id="onlineCounter" class="online-counter">
-        <span class="status-dot"></span>
-        <span id="userCount">1</span>人がオンライン
+    <!-- ============================================== -->
+    <!-- 1. ログイン / 新規登録 画面 (未ログイン時) -->
+    <!-- ============================================== -->
+    <div id="authView" class="auth-view-container">
+        <div class="auth-card">
+            <div class="auth-card-header">
+                <div class="auth-logo">💬</div>
+                <h1 id="authTitle">ログイン</h1>
+                <p id="authSubtitle">チャットに参加するにはログインしてください</p>
+            </div>
+            <form id="authForm" class="auth-form" onsubmit="return false;">
+                <div class="input-group">
+                    <input type="text" id="authUsername" placeholder="ユーザー名" maxlength="20" autocomplete="username" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="authPassword" placeholder="パスワード (6文字以上)" autocomplete="current-password" required>
+                </div>
+                <button type="submit" id="authSubmitBtn" class="primary-btn">
+                    ログインする
+                </button>
+                <div class="auth-switch">
+                    <span id="authSwitchPrompt">アカウントをお持ちでないですか？</span>
+                    <a href="#" id="switchToRegister">新規登録</a>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <!-- Login/User Button -->
-    <div id="authContainer" class="auth-container">
-        <button id="loginOpenBtn" class="auth-btn">ログイン</button>
-        <div id="userInfo" class="user-info hidden">
-            <span id="displayUserName" class="user-name"></span>
-            <button id="logoutBtn" class="logout-btn">ログアウト</button>
+    <!-- ============================================== -->
+    <!-- 2. メインチャット画面 (ログイン後) -->
+    <!-- ============================================== -->
+    <div id="mainChatView" class="main-chat-view hidden">
+        <!-- トップバー -->
+        <div class="top-nav-bar">
+            <div id="onlineCounter" class="online-counter-badge">
+                <span class="status-dot"></span>
+                <span id="userCount">1</span>人がオンライン
+            </div>
+            <div class="user-profile-badge">
+                <div class="user-profile-info">
+                    <span class="user-greeting">👤</span>
+                    <span id="displayUserName" class="user-name-text"></span>
+                </div>
+                <button id="logoutBtn" class="logout-btn-header" title="ログアウト">ログアウト</button>
+            </div>
+        </div>
+
+        <!-- チャット本体コンテナ -->
+        <div class="container main-content-container">
+            <section class="input-card">
+                <div class="input-group">
+                    <input type="text" id="nameInput" placeholder="お名前" maxlength="20" readonly>
+                </div>
+                <div class="input-group">
+                    <textarea id="messageInput" placeholder="メッセージを入力してみよう..." rows="3"></textarea>
+                </div>
+
+                <!-- 画像プレビュー領域 -->
+                <div id="imagePreviewContainer" class="image-preview-container hidden">
+                    <div class="image-preview-wrapper">
+                        <img id="imagePreview" src="" alt="プレビュー">
+                        <button type="button" id="removeImageBtn" class="remove-image-btn" title="画像を削除">&times;</button>
+                    </div>
+                </div>
+
+                <!-- 入力アクションバー（画像選択ボタン＆送信ボタン） -->
+                <div class="input-actions-bar">
+                    <label for="imageInput" class="attach-image-btn" id="attachImageBtn" title="画像を添付">
+                        <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <span>画像を追加</span>
+                    </label>
+
+                    <button id="sendBtn">
+                        送信する
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+
+                <button id="deleteAllBtn" class="delete-all-btn"
+                    style="width: 100%; margin-top: 1rem; background: #fee2e2; color: #ef4444; justify-content: center;">
+                    自分の投稿を全て削除
+                </button>
+                <button id="adminDeleteBtn" class="admin-delete-btn"
+                    style="width: 100%; margin-top: 0.5rem; background: #991b1b; color: white; justify-content: center; font-size: 0.8rem; padding: 0.5rem;">
+                    管理者用: 全投稿を削除
+                </button>
+            </section>
+
+            <section id="messagesContainer" class="messages-container">
+                <div class="loading-state">読み込み中...</div>
+            </section>
         </div>
     </div>
 
@@ -43,86 +132,12 @@
         </div>
     </div>
 
-    <!-- ログイン / 新規登録モーダル -->
-    <div id="loginModal" class="modal-overlay">
-        <div class="modal-content auth-modal">
-            <button id="closeLoginBtn" class="close-btn">&times;</button>
-            <h2 id="authModalTitle">ログイン</h2>
-            <div class="auth-form">
-                <div class="input-group">
-                    <input type="text" id="authUsername" placeholder="ユーザー名" maxlength="20">
-                </div>
-                <div class="input-group">
-                    <input type="password" id="authPassword" placeholder="パスワード">
-                </div>
-                <button id="authSubmitBtn" class="primary-btn">ログインする</button>
-                <p class="auth-switch">アカウントをお持ちでないですか？ <a href="#" id="switchToRegister">新規登録</a></p>
-            </div>
-        </div>
-    </div>
-
     <!-- 画像拡大プレビュー用モーダル -->
     <div id="imageModal" class="modal-overlay image-modal-overlay">
         <div class="image-modal-content">
             <button id="closeImageModalBtn" class="image-modal-close-btn">&times;</button>
             <img id="modalImage" src="" alt="拡大画像">
         </div>
-    </div>
-
-    <!-- メインコンテンツ -->
-    <div class="container main-content-container">
-        <section class="input-card">
-            <div class="input-group">
-                <input type="text" id="nameInput" placeholder="お名前" maxlength="20" autocomplete="off">
-            </div>
-            <div class="input-group">
-                <textarea id="messageInput" placeholder="メッセージを入力してみよう..." rows="3"></textarea>
-            </div>
-
-            <!-- 画像プレビュー領域 -->
-            <div id="imagePreviewContainer" class="image-preview-container hidden">
-                <div class="image-preview-wrapper">
-                    <img id="imagePreview" src="" alt="プレビュー">
-                    <button type="button" id="removeImageBtn" class="remove-image-btn" title="画像を削除">&times;</button>
-                </div>
-            </div>
-
-            <!-- 入力アクションバー（画像選択ボタン＆送信ボタン） -->
-            <div class="input-actions-bar">
-                <label for="imageInput" class="attach-image-btn" id="attachImageBtn" title="画像を添付">
-                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                        <polyline points="21 15 16 10 5 21"></polyline>
-                    </svg>
-                    <span>画像を追加</span>
-                </label>
-
-                <button id="sendBtn">
-                    送信する
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                </button>
-            </div>
-
-            <button id="deleteAllBtn" class="delete-all-btn"
-                style="width: 100%; margin-top: 1rem; background: #fee2e2; color: #ef4444; justify-content: center;">
-                自分の投稿を全て削除
-            </button>
-            <button id="adminDeleteBtn" class="admin-delete-btn"
-                style="width: 100%; margin-top: 0.5rem; background: #991b1b; color: white; justify-content: center; font-size: 0.8rem; padding: 0.5rem;">
-                管理者用: 全投稿を削除
-            </button>
-        </section>
-
-        <section id="messagesContainer" class="messages-container">
-            <div class="loading-state">読み込み中...</div>
-        </section>
     </div>
 
     <script type="module" src="script.js"></script>
