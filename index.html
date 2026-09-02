@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ページを読み込めませんでした</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-shape"></div>
+    <div class="background-shape shape-2"></div>
+
+    <div id="onlineCounter" class="online-counter">
+        <span class="status-dot"></span>
+        <span id="userCount">1</span>人がオンライン
+    </div>
+
+    <!-- Login/User Button -->
+    <div id="authContainer" class="auth-container">
+        <button id="loginOpenBtn" class="auth-btn">ログイン</button>
+        <div id="userInfo" class="user-info hidden">
+            <span id="displayUserName" class="user-name"></span>
+            <button id="logoutBtn" class="logout-btn">ログアウト</button>
+        </div>
+    </div>
+
+    <div id="tosModal" class="modal-overlay">
+        <div class="modal-content">
+            <button id="closeTosBtn" class="close-btn">&times;</button>
+            <h2>利用規約</h2>
+            <div class="tos-body">
+                <h1>ルール</h1>
+                <h2>1.絶対に他人が不快になるような投稿はしない(IDは取得致しました個人の特定は可能です*3)</h2>
+                <h2>2.前提として趣味として作ったサイトです利用は自由ですが個人責任でお願いします</h2>
+                <h2>3.以上に違反した場合は取得したIDにより個人を特定します</h2>
+                <h2>4.ま、脅したけど正直そんなに確認せんから自由にどうぞ</h2>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>本当に削除しますか？</h2>
+            <p>この操作は取り消せません。</p>
+            <div class="modal-actions">
+                <button id="cancelDeleteBtn" class="secondary-btn">キャンセル</button>
+                <button id="confirmDeleteBtn" class="danger-btn">削除する</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loginModal" class="modal-overlay">
+        <div class="modal-content auth-modal">
+            <button id="closeLoginBtn" class="close-btn">&times;</button>
+            <h2 id="authModalTitle">ログイン</h2>
+            <div class="auth-form">
+                <div class="input-group">
+                    <input type="text" id="authUsername" placeholder="ユーザー名" maxlength="20">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="authPassword" placeholder="パスワード">
+                </div>
+                <button id="authSubmitBtn" class="primary-btn">ログインする</button>
+                <p class="auth-switch">アカウントをお持ちでないですか？ <a href="#" id="switchToRegister">新規登録</a></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="book-container">
+        <!-- Page 1: Main App -->
+        <div class="page" id="page-1">
+            <div class="page-content">
+                <div class="container">
+                    <header>
+                        <h1>↓</h1>
+                        <footer>
+                            <a href="#" id="tosLink">利用規約</a>
+                        </footer>
+                        <p>掲示板として使ってね</p>
+                    </header>
+
+                    <section class="input-card">
+                        <div class="input-group">
+                            <input type="text" id="nameInput" placeholder="お名前" maxlength="20" autocomplete="off">
+                        </div>
+                        <div class="input-group">
+                            <textarea id="messageInput" placeholder="メッセージを入力してみよう..." rows="3"></textarea>
+                        </div>
+                        <button id="sendBtn">
+                            送信する
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                        <button id="deleteAllBtn" class="delete-all-btn"
+                            style="width: 100%; margin-top: 1rem; background: #fee2e2; color: #ef4444; justify-content: center;">
+                            自分の投稿を全て削除
+                        </button>
+                        <button id="adminDeleteBtn" class="admin-delete-btn"
+                            style="width: 100%; margin-top: 0.5rem; background: #991b1b; color: white; justify-content: center; font-size: 0.8rem; padding: 0.5rem;">
+                            管理者用: 全投稿を削除
+                        </button>
+                    </section>
+
+                    <section id="messagesContainer" class="messages-container">
+                        <div class="loading-state">読み込み中...</div>
+                    </section>
+
+                    <div class="hint-text" style="text-align: center; margin-top: 2rem; color: #888;">
+                        スワイプで新しい機能へ &rarr;
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 2: New Function Placeholder -->
+        <div class="page" id="page-2">
+            <div class="page-content">
+                <div class="container new-function-container">
+
+                    <!-- 
+                        ★ Page 2のコンテンツはここに記述します 
+                        (例: 新しい機能のHTMLタグなど)
+                    -->
+
+                    <div class="othello-container">
+                        <h2>オセロ</h2>
+                        <div class="othello-game-layout">
+                            <div class="othello-board-wrapper">
+                                <div class="game-status">
+                                    <span id="turnIndicator">黒の番</span>
+                                </div>
+                                <div id="othello-board" class="othello-board"></div>
+                            </div>
+                            <div class="game-sidebar">
+                                <div class="sidebar-card">
+                                    <h3>対戦成績</h3>
+                                    <div class="stats-row">
+                                        <div class="stat-item black">
+                                            <span class="stat-label">黒 (Black)</span>
+                                            <span id="blackCount" class="stat-value">2</span>
+                                        </div>
+                                        <div class="stat-item white">
+                                            <span class="stat-label">白 (White)</span>
+                                            <span id="whiteCount" class="stat-value">2</span>
+                                        </div>
+                                    </div>
+                                    <div class="last-move-info">
+                                        <span class="label">最後に置いた人:</span>
+                                        <span id="lastPlayerName" class="value">-</span>
+                                    </div>
+                                    <div class="last-reset-info">
+                                        <span class="label">最後にリセットした人:</span>
+                                        <span id="lastResetName" class="value">-</span>
+                                    </div>
+                                </div>
+                                <div class="game-controls">
+                                    <button id="resetGameBtn" class="secondary-btn">リセット</button>
+                                </div>
+                                <p class="game-info">※連続投稿禁止！一度置いたら他の人が置くまで待ってね</p>
+                            </div>
+                        </div>
+                        <p class="swipe-hint">&larr; スワイプで戻る</p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>
