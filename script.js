@@ -69,11 +69,7 @@ let isRegisterMode = false;
 let deleteTargetId = null;
 
 // --- 画像処理（選択・自動リサイズ・圧縮） ---
-if (attachImageBtn && imageInput) {
-    attachImageBtn.addEventListener('click', () => {
-        imageInput.click();
-    });
-
+if (imageInput) {
     imageInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -84,11 +80,11 @@ if (attachImageBtn && imageInput) {
         }
 
         try {
-            // 画像をブラウザ上でリサイズ・圧縮
+            // 画像をブラウザ上でリサイズ・圧縮 (最大800px, JPEG品質0.75)
             const compressedBase64 = await resizeAndCompressImage(file, 800, 800, 0.75);
             currentImageBase64 = compressedBase64;
-            imagePreview.src = compressedBase64;
-            imagePreviewContainer.classList.remove('hidden');
+            if (imagePreview) imagePreview.src = compressedBase64;
+            if (imagePreviewContainer) imagePreviewContainer.classList.remove('hidden');
         } catch (err) {
             console.error('画像読み込みエラー:', err);
             alert('画像の読み込みに失敗しました。');

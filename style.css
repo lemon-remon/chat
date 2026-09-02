@@ -167,7 +167,9 @@ button {
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
-    display: flex;
+    user-select: none;
+    -webkit-user-select: none;
+    display: inline-flex;
     align-items: center;
     gap: 0.4rem;
     transition: all 0.2s ease;
