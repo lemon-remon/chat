@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, where, getDocs, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, where, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -39,6 +39,19 @@ const deleteModal = document.getElementById('deleteModal');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
 
+// 画像関連要素
+const attachImageBtn = document.getElementById('attachImageBtn');
+const imageInput = document.getElementById('imageInput');
+const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+const imagePreview = document.getElementById('imagePreview');
+const removeImageBtn = document.getElementById('removeImageBtn');
+const imageModal = document.getElementById('imageModal');
+const modalImage = document.getElementById('modalImage');
+const closeImageModalBtn = document.getElementById('closeImageModalBtn');
+
+// 選択中の画像データ (Base64)
+let currentImageBase64 = null;
+
 // Auth elements
 const loginModal = document.getElementById('loginModal');
 const loginOpenBtn = document.getElementById('loginOpenBtn');
@@ -53,9 +66,115 @@ const displayUserName = document.getElementById('displayUserName');
 const logoutBtn = document.getElementById('logoutBtn');
 
 let isRegisterMode = false;
-
 let deleteTargetId = null;
 
+// --- 画像処理（選択・自動リサイズ・圧縮） ---
+if (attachImageBtn && imageInput) {
+    attachImageBtn.addEventListener('click', () => {
+        imageInput.click();
+    });
+
+    imageInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('画像ファイルを選択してください。');
+            return;
+        }
+
+        try {
+            // 画像をブラウザ上でリサイズ・圧縮
+            const compressedBase64 = await resizeAndCompressImage(file, 800, 800, 0.75);
+            currentImageBase64 = compressedBase64;
+            imagePreview.src = compressedBase64;
+            imagePreviewContainer.classList.remove('hidden');
+        } catch (err) {
+            console.error('画像読み込みエラー:', err);
+            alert('画像の読み込みに失敗しました。');
+        }
+    });
+}
+
+if (removeImageBtn) {
+    removeImageBtn.addEventListener('click', clearSelectedImage);
+}
+
+function clearSelectedImage() {
+    currentImageBase64 = null;
+    if (imageInput) imageInput.value = '';
+    if (imagePreview) imagePreview.src = '';
+    if (imagePreviewContainer) imagePreviewContainer.classList.add('hidden');
+}
+
+// Canvasを使った画像リサイズ・圧縮
+function resizeAndCompressImage(file, maxWidth, maxHeight, quality) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (readerEvent) => {
+            const img = new Image();
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // JPEG形式で圧縮
+                const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                resolve(dataUrl);
+            };
+            img.onerror = reject;
+            img.src = readerEvent.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// 画像拡大モーダル制御
+function openImageModal(src) {
+    if (imageModal && modalImage) {
+        modalImage.src = src;
+        imageModal.classList.add('active');
+    }
+}
+
+function closeImageModal() {
+    if (imageModal && modalImage) {
+        imageModal.classList.remove('active');
+        modalImage.src = '';
+    }
+}
+
+if (closeImageModalBtn) {
+    closeImageModalBtn.addEventListener('click', closeImageModal);
+}
+
+if (imageModal) {
+    imageModal.addEventListener('click', (e) => {
+        if (e.target === imageModal || e.target === closeImageModalBtn) {
+            closeImageModal();
+        }
+    });
+}
+
+// --- 利用規約モーダル ---
 function openTos() {
     tosModal.classList.add('active');
 }
@@ -83,6 +202,7 @@ if (tosModal) {
     });
 }
 
+// --- 削除確認モーダル ---
 function openDeleteModal(id) {
     deleteTargetId = id;
     deleteModal.classList.add('active');
@@ -136,79 +256,89 @@ function updateAuthModalUI() {
     }
 }
 
-switchToRegister.addEventListener('click', (e) => {
-    e.preventDefault();
-    isRegisterMode = !isRegisterMode;
-    updateAuthModalUI();
-});
+if (switchToRegister) {
+    switchToRegister.addEventListener('click', (e) => {
+        e.preventDefault();
+        isRegisterMode = !isRegisterMode;
+        updateAuthModalUI();
+    });
+}
 
-loginOpenBtn.addEventListener('click', openLoginModal);
-closeLoginBtn.addEventListener('click', closeLoginModal);
+if (loginOpenBtn) loginOpenBtn.addEventListener('click', openLoginModal);
+if (closeLoginBtn) closeLoginBtn.addEventListener('click', closeLoginModal);
 
-authSubmitBtn.addEventListener('click', async () => {
-    const username = authUsernameInput.value.trim();
-    const password = authPasswordInput.value;
+if (authSubmitBtn) {
+    authSubmitBtn.addEventListener('click', async () => {
+        const username = authUsernameInput.value.trim();
+        const password = authPasswordInput.value;
 
-    if (!username || !password) {
-        alert("ユーザー名とパスワードを入力してください。");
-        return;
-    }
-
-    if (password.length < 6) {
-        alert("パスワードは6文字以上で入力してください。");
-        return;
-    }
-
-    const email = usernameToEmail(username);
-    authSubmitBtn.disabled = true;
-    const originalText = authSubmitBtn.innerText;
-    authSubmitBtn.innerText = '処理中...';
-
-    try {
-        if (isRegisterMode) {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            await updateProfile(userCredential.user, { displayName: username });
-            alert("アカウントを作成しました！");
-        } else {
-            await signInWithEmailAndPassword(auth, email, password);
-            alert("ログインしました！");
+        if (!username || !password) {
+            alert("ユーザー名とパスワードを入力してください。");
+            return;
         }
-        closeLoginModal();
-    } catch (error) {
-        console.error("Auth error:", error);
-        if (error.code === 'auth/email-already-in-use') {
-            alert("このユーザー名は既に使われています。");
-        } else if (error.code === 'auth/invalid-credential') {
-            alert("ユーザー名またはパスワードが違います。");
-        } else {
-            alert("エラーが発生しました: " + error.message);
-        }
-    } finally {
-        authSubmitBtn.disabled = false;
-        authSubmitBtn.innerText = originalText;
-    }
-});
 
-logoutBtn.addEventListener('click', () => {
-    if (confirm("ログアウトしますか？")) {
-        signOut(auth);
-    }
-});
+        if (password.length < 6) {
+            alert("パスワードは6文字以上で入力してください。");
+            return;
+        }
+
+        const email = usernameToEmail(username);
+        authSubmitBtn.disabled = true;
+        const originalText = authSubmitBtn.innerText;
+        authSubmitBtn.innerText = '処理中...';
+
+        try {
+            if (isRegisterMode) {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(userCredential.user, { displayName: username });
+                alert("アカウントを作成しました！");
+            } else {
+                await signInWithEmailAndPassword(auth, email, password);
+                alert("ログインしました！");
+            }
+            closeLoginModal();
+        } catch (error) {
+            console.error("Auth error:", error);
+            if (error.code === 'auth/email-already-in-use') {
+                alert("このユーザー名は既に使われています。");
+            } else if (error.code === 'auth/invalid-credential') {
+                alert("ユーザー名またはパスワードが違います。");
+            } else {
+                alert("エラーが発生しました: " + error.message);
+            }
+        } finally {
+            authSubmitBtn.disabled = false;
+            authSubmitBtn.innerText = originalText;
+        }
+    });
+}
+
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+        if (confirm("ログアウトしますか？")) {
+            signOut(auth);
+        }
+    });
+}
 
 onAuthStateChanged(auth, (user) => {
     currentUser = user;
     if (user) {
-        loginOpenBtn.classList.add('hidden');
-        userInfo.classList.remove('hidden');
-        displayUserName.innerText = user.displayName || user.email.split('@')[0];
-        nameInput.value = user.displayName || '';
-        nameInput.readOnly = true;
+        if (loginOpenBtn) loginOpenBtn.classList.add('hidden');
+        if (userInfo) userInfo.classList.remove('hidden');
+        if (displayUserName) displayUserName.innerText = user.displayName || user.email.split('@')[0];
+        if (nameInput) {
+            nameInput.value = user.displayName || '';
+            nameInput.readOnly = true;
+        }
     } else {
-        loginOpenBtn.classList.remove('hidden');
-        userInfo.classList.add('hidden');
-        displayUserName.innerText = '';
-        nameInput.value = '';
-        nameInput.readOnly = false;
+        if (loginOpenBtn) loginOpenBtn.classList.remove('hidden');
+        if (userInfo) userInfo.classList.add('hidden');
+        if (displayUserName) displayUserName.innerText = '';
+        if (nameInput) {
+            nameInput.value = '';
+            nameInput.readOnly = false;
+        }
     }
 });
 
@@ -234,12 +364,14 @@ if (confirmDeleteBtn) {
     });
 }
 
+// --- メッセージ送信 ---
 async function sendMessage() {
     const name = nameInput.value.trim() || '名無しさん';
     const content = messageInput.value.trim();
+    const image = currentImageBase64;
 
-    if (!content) {
-        alert("メッセージを入力してください！");
+    if (!content && !image) {
+        alert("メッセージまたは画像を入力してください！");
         return;
     }
 
@@ -247,34 +379,44 @@ async function sendMessage() {
     sendBtn.innerHTML = '送信中...';
 
     try {
-        await addDoc(collection(db, "messages"), {
+        const messageData = {
             name: name,
             content: content,
             timestamp: serverTimestamp(),
             clientId: currentUser ? currentUser.uid : clientId,
             uid: currentUser ? currentUser.uid : null
-        });
+        };
+
+        if (image) {
+            messageData.image = image;
+        }
+
+        await addDoc(collection(db, "messages"), messageData);
         messageInput.value = '';
+        clearSelectedImage();
     } catch (e) {
         console.error(e);
-        alert("送信に失敗しました。");
+        alert("送信に失敗しました: " + e.message);
     } finally {
         sendBtn.disabled = false;
         sendBtn.innerHTML = `送信する <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
     }
 }
 
-sendBtn.addEventListener('click', sendMessage);
+if (sendBtn) sendBtn.addEventListener('click', sendMessage);
 
-messageInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        if (!e.isComposing) {
-            sendMessage();
+if (messageInput) {
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (!e.isComposing) {
+                sendMessage();
+            }
         }
-    }
-});
+    });
+}
 
+// --- メッセージのリアルタイム購読 ---
 const q = query(collection(db, "messages"), orderBy("timestamp", "desc"));
 
 onSnapshot(q, (snapshot) => {
@@ -293,8 +435,6 @@ onSnapshot(q, (snapshot) => {
     });
 });
 
-
-
 const deleteAllBtn = document.getElementById('deleteAllBtn');
 if (deleteAllBtn) {
     deleteAllBtn.addEventListener('click', async () => {
@@ -304,7 +444,6 @@ if (deleteAllBtn) {
         deleteAllBtn.innerText = '削除中...';
 
         try {
-            // Query for my messages (support both uid and legacy clientId)
             const uid = currentUser ? currentUser.uid : clientId;
             const q = query(
                 collection(db, "messages"),
@@ -351,8 +490,6 @@ if (deleteAllBtn) {
     });
 }
 
-
-
 const adminDeleteBtn = document.getElementById('adminDeleteBtn');
 if (adminDeleteBtn) {
     adminDeleteBtn.addEventListener('click', async () => {
@@ -368,7 +505,6 @@ if (adminDeleteBtn) {
         adminDeleteBtn.innerText = '全削除中...';
 
         try {
-            // Get all messages
             const q = query(collection(db, "messages"));
             const snapshot = await getDocs(q);
 
@@ -409,6 +545,7 @@ async function updateLockStatus(id, newStatus) {
     }
 }
 
+// --- メッセージ要素描画 ---
 function renderMessage(message, id) {
     const div = document.createElement('div');
     div.classList.add('message-card');
@@ -444,6 +581,16 @@ function renderMessage(message, id) {
         ? `<button class="delete-btn" title="削除">×</button>`
         : '';
 
+    // 画像HTML
+    let imageHtml = '';
+    if (message.image) {
+        imageHtml = `
+            <div class="message-image-container">
+                <img src="${message.image}" alt="投稿画像" class="message-image" loading="lazy">
+            </div>
+        `;
+    }
+
     div.innerHTML = `
         <div class="message-header">
             <div class="message-avatar">${sanitizeHTML(initial)}</div>
@@ -456,8 +603,18 @@ function renderMessage(message, id) {
                 ${lockBtnHtml}
             </div>
         </div>
-        <div class="message-content">${sanitizeHTML(message.content)}</div>
+        ${message.content ? `<div class="message-content">${sanitizeHTML(message.content)}</div>` : ''}
+        ${imageHtml}
     `;
+
+    // 画像クリックで拡大モーダル表示
+    const imgEl = div.querySelector('.message-image');
+    if (imgEl) {
+        imgEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openImageModal(message.image);
+        });
+    }
 
     const deleteBtn = div.querySelector('.delete-btn');
     if (deleteBtn) {
@@ -477,13 +634,12 @@ function renderMessage(message, id) {
         });
     }
 
-    // Force Delete Logic: 5 consecutive taps
+    // 5連打強制削除
     let tapCount = 0;
     let tapTimer = null;
 
     div.addEventListener('click', (e) => {
-        // Ignore clicks on buttons to prevent conflict
-        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+        if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'IMG') return;
 
         tapCount++;
 
@@ -502,7 +658,7 @@ function renderMessage(message, id) {
         } else {
             tapTimer = setTimeout(() => {
                 tapCount = 0;
-            }, 400); // 400ms timeout for consecutive taps
+            }, 400);
         }
     });
 
@@ -525,418 +681,3 @@ function sanitizeHTML(str) {
         }[m];
     });
 }
-
-// Page Flip Logic
-const bookContainer = document.querySelector('.book-container');
-let touchStartX = 0;
-let touchEndX = 0;
-
-function handleGesture() {
-    if (!bookContainer) return;
-    const swipeThreshold = 50;
-
-    // Check swipe distance
-    if (touchEndX < touchStartX - swipeThreshold) {
-        // Swiped Left (Next Page)
-        bookContainer.classList.add('flipped');
-    }
-
-    if (touchEndX > touchStartX + swipeThreshold) {
-        // Swiped Right (Prev Page)
-        bookContainer.classList.remove('flipped');
-    }
-}
-
-document.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-}, { passive: true });
-
-document.addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleGesture();
-}, { passive: true });
-
-// Mouse support for testing on PC
-let isDragging = false;
-
-document.addEventListener('mousedown', e => {
-    isDragging = true;
-    touchStartX = e.screenX;
-});
-
-document.addEventListener('mouseup', e => {
-    if (!isDragging) return;
-    isDragging = false;
-    touchEndX = e.screenX;
-    handleGesture();
-});
-
-// Othello Game Logic
-const boardElement = document.getElementById('othello-board');
-const turnIndicator = document.getElementById('turnIndicator');
-const resetGameBtn = document.getElementById('resetGameBtn');
-const blackCountEl = document.getElementById('blackCount');
-const whiteCountEl = document.getElementById('whiteCount');
-const lastPlayerNameEl = document.getElementById('lastPlayerName');
-const lastResetNameEl = document.getElementById('lastResetName');
-const gameDocRef = doc(db, "games", "othello");
-
-// Client ID for calculating consecutive moves
-// clientId is now defined at the top of the file.
-
-let boardState = Array(8).fill(null).map(() => Array(8).fill(null));
-let currentTurn = 'black';
-let lastMoveBy = null;
-let gameStatus = 'playing';
-let winner = null;
-
-// Initialize Board UI
-function initBoard() {
-    boardElement.innerHTML = '';
-    for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-            const cell = document.createElement('div');
-            cell.classList.add('cell');
-            cell.dataset.row = row;
-            cell.dataset.col = col;
-            cell.addEventListener('click', () => handleCellClick(row, col));
-            boardElement.appendChild(cell);
-        }
-    }
-}
-
-// Render Board State
-async function renderBoard() {
-    const cells = document.querySelectorAll('.cell');
-    cells.forEach(cell => {
-        const r = parseInt(cell.dataset.row);
-        const c = parseInt(cell.dataset.col);
-        const piece = boardState[r][c];
-
-        cell.innerHTML = '';
-        if (piece) {
-            const p = document.createElement('div');
-            p.classList.add('piece', piece);
-            cell.appendChild(p);
-        }
-    });
-
-    // Update UI text
-    const flatBoard = boardState.flat();
-    const blackCount = flatBoard.filter(c => c === 'black').length;
-    const whiteCount = flatBoard.filter(c => c === 'white').length;
-
-    // Update Sidebar Stats
-    if (blackCountEl) blackCountEl.innerText = blackCount;
-    if (whiteCountEl) whiteCountEl.innerText = whiteCount;
-
-    if (gameStatus === 'finished') {
-        let resultText = '';
-        if (winner === 'black') resultText = '黒の勝ち！';
-        else if (winner === 'white') resultText = '白の勝ち！';
-        else resultText = '引き分け！';
-
-        turnIndicator.innerHTML = `<span style="color:#e11d48">${resultText}</span> (黒:${blackCount} - 白:${whiteCount})`;
-        turnIndicator.style.color = '#e11d48';
-    } else {
-        const currentUid = currentUser ? currentUser.uid : clientId;
-        const isMyTurn = lastMoveBy !== currentUid;
-        const statusText = currentTurn === 'black' ? '黒の番' : '白の番';
-        const restrictionText = !isMyTurn ? '(待機中...)' : (!currentUser ? '(ログインが必要)' : '');
-        const countText = `(黒:${blackCount} - 白:${whiteCount})`;
-
-        turnIndicator.innerText = `${statusText} ${restrictionText} ${countText}`;
-
-        if (!isMyTurn || !currentUser) {
-            turnIndicator.style.color = '#ef4444';
-        } else {
-            turnIndicator.style.color = 'var(--text-primary)';
-        }
-    }
-
-    // Check if game document exists, if not create it
-    const snap = await getDoc(gameDocRef);
-    if (!snap.exists()) {
-        resetGame();
-    }
-}
-
-// Reset Game State
-async function resetGame() {
-    // Initial setup: 4 pieces in center
-    const newBoard = Array(8).fill(null).map(() => Array(8).fill(null));
-    newBoard[3][3] = 'white';
-    newBoard[3][4] = 'black';
-    newBoard[4][3] = 'black';
-    newBoard[4][4] = 'white';
-
-    try {
-        const resetterName = currentUser ? (currentUser.displayName || '名無しさん') : 'システム';
-        await setDoc(gameDocRef, {
-            board: JSON.stringify(newBoard),
-            turn: 'black',
-            lastMoveBy: null,
-            lastMoveByName: '-',
-            lastResetByName: resetterName,
-            status: 'playing',
-            winner: null,
-            updatedAt: serverTimestamp()
-        });
-        alert('ゲームをリセットしました！');
-    } catch (e) {
-        console.error("Error resetting game:", e);
-    }
-}
-
-// Handle Cell Click
-async function handleCellClick(row, col) {
-    if (!currentUser) {
-        alert("オセロをプレイするにはログインが必要です！");
-        openLoginModal();
-        return;
-    }
-
-    if (boardState[row][col] !== null) return;
-    if (boardState.flat().every(cell => cell !== null)) return; // Board full
-    if (gameStatus === 'finished') return; // Do not allow moves if game is finished
-
-    const currentUid = currentUser.uid;
-
-    if (lastMoveBy === currentUid) {
-        alert("連続して置くことはできません！他の人が置くのを待ってください。");
-        return;
-    }
-
-    const flips = getFlips(row, col, currentTurn); // Uses current global boardState
-    if (flips.length === 0) {
-        return;
-    }
-
-    try {
-        // Deep copy board
-        const nextBoard = boardState.map(r => [...r]);
-
-        // Place piece
-        nextBoard[row][col] = currentTurn;
-
-        // Flip pieces
-        flips.forEach(p => {
-            nextBoard[p.r][p.c] = currentTurn;
-        });
-
-        const opponent = currentTurn === 'black' ? 'white' : 'black';
-        let nextTurn = opponent;
-        let gameStatus = 'playing';
-        let winner = null;
-
-        // Check if opponent has any valid moves
-        const opponentHasMove = hasValidMove(nextBoard, opponent);
-
-        if (!opponentHasMove) {
-            // Opponent cannot move. Check if current player can move.
-            const currentHasMove = hasValidMove(nextBoard, currentTurn);
-
-            if (currentHasMove) {
-                // Pass: Opponent skipped, turn remains currentTurn
-                nextTurn = currentTurn;
-                alert(`${opponent === 'black' ? '黒' : '白'}は置く場所がありません。パスします。`);
-            } else {
-                // Determine winner
-                gameStatus = 'finished';
-                const flatBoard = nextBoard.flat();
-                const blackCount = flatBoard.filter(c => c === 'black').length;
-                const whiteCount = flatBoard.filter(c => c === 'white').length;
-
-                if (blackCount > whiteCount) winner = 'black';
-                else if (whiteCount > blackCount) winner = 'white';
-                else winner = 'draw';
-            }
-        }
-
-        const currentUid = currentUser.uid;
-        const currentName = currentUser.displayName || '名無しさん';
-        await setDoc(gameDocRef, {
-            board: JSON.stringify(nextBoard),
-            turn: nextTurn,
-            lastMoveBy: currentUid,
-            lastMoveByName: currentName,
-            status: gameStatus,
-            winner: winner,
-            updatedAt: serverTimestamp()
-        });
-    } catch (e) {
-        console.error("Error updating game:", e);
-        alert("エラーが発生しました。");
-    }
-}
-
-// Check if a player has any valid move
-function hasValidMove(board, color) {
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-            if (board[r][c] === null) {
-                if (getFlips(r, c, color, board).length > 0) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-// Othello Logic: Get flippable pieces
-function getFlips(row, col, color, board = boardState) {
-    const directions = [
-        [-1, -1], [-1, 0], [-1, 1],
-        [0, -1], [0, 1],
-        [1, -1], [1, 0], [1, 1]
-    ];
-
-    let flips = [];
-    const opponent = color === 'black' ? 'white' : 'black';
-
-    directions.forEach(([dr, dc]) => {
-        let r = row + dr;
-        let c = col + dc;
-        let potentialFlips = [];
-
-        while (r >= 0 && r < 8 && c >= 0 && c < 8) {
-            if (board[r][c] === opponent) {
-                potentialFlips.push({ r, c });
-            } else if (board[r][c] === color) {
-                if (potentialFlips.length > 0) {
-                    flips = flips.concat(potentialFlips);
-                }
-                break;
-            } else {
-                break;
-            }
-            r += dr;
-            c += dc;
-        }
-    });
-
-    return flips;
-}
-
-// Sync Game State
-onSnapshot(gameDocRef, (doc) => {
-    if (doc.exists()) {
-        const data = doc.data();
-        if (data.board) boardState = JSON.parse(data.board);
-        if (data.turn) currentTurn = data.turn;
-        if (data.lastMoveBy !== undefined) lastMoveBy = data.lastMoveBy;
-        if (lastPlayerNameEl) {
-            lastPlayerNameEl.innerText = data.lastMoveByName || '-';
-        }
-        if (lastResetNameEl) {
-            lastResetNameEl.innerText = data.lastResetByName || '-';
-        }
-        renderBoard();
-    }
-});
-
-if (resetGameBtn) {
-    resetGameBtn.addEventListener('click', () => {
-        if (!currentUser) {
-            alert("リセットするにはログインが必要です！");
-            openLoginModal();
-            return;
-        }
-        if (confirm('ゲームをリセットしてもよろしいですか？')) {
-            resetGame();
-        }
-    });
-}
-
-// Init
-initBoard();
-
-// Online User Counter Logic
-const userCountElement = document.getElementById('userCount');
-const presenceCollectionRef = collection(db, "presence");
-
-// Heartbeat: Update presence every 30 seconds
-async function updatePresence() {
-    try {
-        const userRef = doc(db, "presence", clientId);
-        await setDoc(userRef, {
-            lastSeen: serverTimestamp(),
-            userAgent: navigator.userAgent
-        }, { merge: true });
-    } catch (e) {
-        console.error("Error updating presence:", e);
-    }
-}
-
-// Initial update
-updatePresence();
-
-// Periodic update
-setInterval(updatePresence, 30000);
-
-// Remove presence on unload (Best effort)
-window.addEventListener('beforeunload', () => {
-    // Note: async calls in beforeunload are unreliable. 
-    // We rely on the timestamp timeout for accurate counting.
-    const userRef = doc(db, "presence", clientId);
-    // Using sendBeacon or similar would be better but requires an API endpoint usually.
-    // For Firestore, we just let it timeout or try a detach catch-free delete
-    deleteDoc(userRef).catch(err => { });
-});
-
-// Listen for active users
-const presenceQuery = query(presenceCollectionRef);
-
-onSnapshot(presenceQuery, (snapshot) => {
-    // We need to calculate active users based on local time vs server time approximation
-    // Since we don't have easy server-side filtering without cloud functions,
-    // we fetch all presence docs (scalability warning if > 100 users, but fine for small app)
-
-    const now = new Date();
-    // Consider active if seen in last 2 minutes
-    const cutoff = new Date(now.getTime() - 2 * 60 * 1000);
-
-    let activeCount = 0;
-
-    snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.lastSeen) {
-            // Firestore timestamp to Date
-            const lastSeenDate = data.lastSeen.toDate();
-            if (lastSeenDate > cutoff) {
-                activeCount++;
-            }
-        }
-    });
-
-    // Ensure at least 1 (me)
-    if (activeCount < 1) activeCount = 1;
-
-    if (userCountElement) {
-        // Animate or set text
-        const currentVal = parseInt(userCountElement.innerText) || 0;
-        if (currentVal !== activeCount) {
-            animateValue(userCountElement, currentVal, activeCount, 500);
-        } else {
-            userCountElement.innerText = activeCount;
-        }
-    }
-});
-
-function animateValue(obj, start, end, duration) {
-    let startTimestamp = null;
-    const step = (timestamp) => {
-        if (!startTimestamp) startTimestamp = timestamp;
-        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-        obj.innerHTML = Math.floor(progress * (end - start) + start);
-        if (progress < 1) {
-            window.requestAnimationFrame(step);
-        } else {
-            obj.innerHTML = end;
-        }
-    };
-    window.requestAnimationFrame(step);
-}
-
-
