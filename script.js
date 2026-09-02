@@ -32,9 +32,6 @@ const messagesContainer = document.getElementById('messagesContainer');
 if (!messagesContainer) {
     console.error("Critical Error: 'messagesContainer' element not found in the DOM.");
 }
-const tosLink = document.getElementById('tosLink');
-const tosModal = document.getElementById('tosModal');
-const closeTosBtn = document.getElementById('closeTosBtn');
 const deleteModal = document.getElementById('deleteModal');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
@@ -170,33 +167,6 @@ if (imageModal) {
     });
 }
 
-// --- 利用規約モーダル ---
-function openTos() {
-    tosModal.classList.add('active');
-}
-
-function closeTos() {
-    tosModal.classList.remove('active');
-}
-
-if (tosLink) {
-    tosLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        openTos();
-    });
-}
-
-if (closeTosBtn) {
-    closeTosBtn.addEventListener('click', closeTos);
-}
-
-if (tosModal) {
-    tosModal.addEventListener('click', (e) => {
-        if (e.target === tosModal) {
-            closeTos();
-        }
-    });
-}
 
 // --- 削除確認モーダル ---
 function openDeleteModal(id) {
