@@ -55,6 +55,32 @@
                 <span class="status-dot"></span>
                 <span id="userCount">1</span>人がオンライン
             </div>
+            <!-- ページマップ -->
+            <div class="page-map-wrapper" id="pageMapWrapper">
+                <button class="page-map-toggle-btn" id="pageMapToggleBtn">
+                    🗺️ ページマップ
+                    <svg class="page-map-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="page-map-popup" id="pageMapPopup">
+                    <div class="page-map-popup-inner">
+                        <button class="page-thumb active" data-page="chat" id="thumbChat">
+                            <div class="page-thumb-preview chat-preview">
+                                <div class="chat-prev-bar"></div>
+                                <div class="chat-prev-msg"></div>
+                                <div class="chat-prev-msg short"></div>
+                                <div class="chat-prev-msg"></div>
+                            </div>
+                            <span class="page-thumb-label">💬 チャット</span>
+                        </button>
+                        <button class="page-thumb" data-page="game" id="thumbGame">
+                            <div class="page-thumb-preview game-preview">
+                                <div class="game-prev-dot"></div>
+                            </div>
+                            <span class="page-thumb-label">🎮 ゲーム</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
             <div class="user-profile-badge">
                 <div class="user-profile-info">
                     <span class="user-greeting">👤</span>
@@ -128,7 +154,7 @@
         <div class="game-topbar">
             <button id="backToChatBtn" class="back-to-chat-btn">← チャットに戻る</button>
             <span class="game-topbar-title">🎮 ゲームページ</span>
-            <span class="game-shortcut-hint">Ctrl+Alt+← で戻る</span>
+            <span class="game-shortcut-hint">Ctrl+Shift+G で戻る</span>
         </div>
         <div class="game-canvas-area">
             <canvas id="gameCanvas"></canvas>

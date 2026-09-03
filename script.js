@@ -104,14 +104,64 @@ const mainChatView = document.getElementById('mainChatView');
 const gameView = document.getElementById('gameView');
 
 // ==============================================================================
-// ゲームページ切り替え (Ctrl+Alt+→ / Ctrl+Alt+←)
+// ゲームページ切り替え ＆ ページマップポップアップ
 // ==============================================================================
-const backToChatBtn = document.getElementById('backToChatBtn');
+const backToChatBtn     = document.getElementById('backToChatBtn');
+const pageMapToggleBtn  = document.getElementById('pageMapToggleBtn');
+const pageMapPopup      = document.getElementById('pageMapPopup');
+
+// ページマップのサムネイルのactive更新
+function setPageMapActive(page) {
+    document.querySelectorAll('.page-thumb').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.page === page);
+    });
+}
+
+// ポップアップを閉じる
+function closePageMap() {
+    pageMapPopup.classList.remove('open');
+    pageMapToggleBtn.classList.remove('open');
+}
+
+// ポップアップの開閉トグル
+if (pageMapToggleBtn) {
+    pageMapToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = pageMapPopup.classList.contains('open');
+        if (isOpen) {
+            closePageMap();
+        } else {
+            pageMapPopup.classList.add('open');
+            pageMapToggleBtn.classList.add('open');
+        }
+    });
+}
+
+// 外側クリックで閉じる
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#pageMapWrapper')) {
+        closePageMap();
+    }
+});
+
+// サムネイルクリックでページ遷移
+document.querySelectorAll('.page-thumb').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const page = btn.dataset.page;
+        closePageMap();
+        if (page === 'game') {
+            if (currentUser) showGamePage();
+        } else {
+            showChatPage();
+        }
+    });
+});
 
 function showGamePage() {
     mainChatView.classList.add('hidden');
     authView.classList.add('hidden');
     gameView.classList.remove('hidden');
+    setPageMapActive('game');
     // canvasをウィンドウサイズにリサイズ
     const canvas = document.getElementById('gameCanvas');
     if (canvas) {
@@ -122,6 +172,7 @@ function showGamePage() {
 
 function showChatPage() {
     gameView.classList.add('hidden');
+    setPageMapActive('chat');
     if (currentUser) {
         mainChatView.classList.remove('hidden');
     } else {
@@ -132,19 +183,6 @@ function showChatPage() {
 if (backToChatBtn) {
     backToChatBtn.addEventListener('click', showChatPage);
 }
-
-document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.altKey && e.key === 'ArrowRight') {
-        e.preventDefault();
-        if (!gameView.classList.contains('hidden')) return; // 既に表示中
-        if (currentUser) showGamePage(); // ログイン時のみ開く
-    }
-    if (e.ctrlKey && e.altKey && e.key === 'ArrowLeft') {
-        e.preventDefault();
-        if (gameView.classList.contains('hidden')) return; // 表示中でなければスキップ
-        showChatPage();
-    }
-});
 
 // ウィンドウリサイズ時にcanvasも追従
 window.addEventListener('resize', () => {
