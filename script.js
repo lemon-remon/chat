@@ -101,6 +101,61 @@ onSnapshot(collection(db, "presence"), (snapshot) => {
 // --- 画面切り替え要素 ---
 const authView = document.getElementById('authView');
 const mainChatView = document.getElementById('mainChatView');
+const gameView = document.getElementById('gameView');
+
+// ==============================================================================
+// ゲームページ切り替え (Ctrl+Alt+→ / Ctrl+Alt+←)
+// ==============================================================================
+const backToChatBtn = document.getElementById('backToChatBtn');
+
+function showGamePage() {
+    mainChatView.classList.add('hidden');
+    authView.classList.add('hidden');
+    gameView.classList.remove('hidden');
+    // canvasをウィンドウサイズにリサイズ
+    const canvas = document.getElementById('gameCanvas');
+    if (canvas) {
+        canvas.width  = gameView.querySelector('.game-canvas-area').clientWidth;
+        canvas.height = gameView.querySelector('.game-canvas-area').clientHeight;
+    }
+}
+
+function showChatPage() {
+    gameView.classList.add('hidden');
+    if (currentUser) {
+        mainChatView.classList.remove('hidden');
+    } else {
+        authView.classList.remove('hidden');
+    }
+}
+
+if (backToChatBtn) {
+    backToChatBtn.addEventListener('click', showChatPage);
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.altKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (!gameView.classList.contains('hidden')) return; // 既に表示中
+        if (currentUser) showGamePage(); // ログイン時のみ開く
+    }
+    if (e.ctrlKey && e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (gameView.classList.contains('hidden')) return; // 表示中でなければスキップ
+        showChatPage();
+    }
+});
+
+// ウィンドウリサイズ時にcanvasも追従
+window.addEventListener('resize', () => {
+    if (!gameView.classList.contains('hidden')) {
+        const canvas = document.getElementById('gameCanvas');
+        if (canvas) {
+            canvas.width  = gameView.querySelector('.game-canvas-area').clientWidth;
+            canvas.height = gameView.querySelector('.game-canvas-area').clientHeight;
+        }
+    }
+});
 
 // --- 認証要素 ---
 const authForm = document.getElementById('authForm');
