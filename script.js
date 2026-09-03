@@ -35,6 +35,62 @@ const displayUserName = document.getElementById('displayUserName');
 const logoutBtn = document.getElementById('logoutBtn');
 
 let isRegisterMode = false;
+const pageSequence = ['auth', 'chat'];
+let currentPageState = null;
+
+function getCurrentPageName() {
+    const hashPage = (location.hash || '').replace('#', '').trim();
+    if (pageSequence.includes(hashPage)) {
+        return hashPage;
+    }
+    return currentUser ? 'chat' : 'auth';
+}
+
+function applyPageState(pageName, { pushHistoryEntry = false } = {}) {
+    const safePage = pageSequence.includes(pageName) ? pageName : getCurrentPageName();
+    currentPageState = safePage;
+
+    const isAuthPage = safePage === 'auth';
+    if (authView) authView.classList.toggle('hidden', !isAuthPage);
+    if (mainChatView) mainChatView.classList.toggle('hidden', isAuthPage);
+
+    if (pushHistoryEntry) {
+        const nextHash = `#${safePage}`;
+        if (location.hash !== nextHash) {
+            history.pushState({ page: safePage }, '', nextHash);
+        }
+    }
+}
+
+function navigateToAdjacentPage(direction) {
+    const currentPage = getCurrentPageName();
+    const currentIndex = pageSequence.indexOf(currentPage);
+    const nextIndex = direction === 'next'
+        ? Math.min(currentIndex + 1, pageSequence.length - 1)
+        : Math.max(currentIndex - 1, 0);
+
+    if (nextIndex === currentIndex) return;
+    applyPageState(pageSequence[nextIndex], { pushHistoryEntry: true });
+}
+
+window.addEventListener('keydown', (event) => {
+    if (!(event.ctrlKey && event.shiftKey)) return;
+
+    if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        navigateToAdjacentPage('next');
+    }
+
+    if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        navigateToAdjacentPage('prev');
+    }
+});
+
+window.addEventListener('popstate', (event) => {
+    const nextPage = event.state && event.state.page ? event.state.page : getCurrentPageName();
+    applyPageState(nextPage);
+});
 
 // --- チャット要素 ---
 const nameInput = document.getElementById('nameInput');
@@ -162,10 +218,11 @@ if (logoutBtn) {
 // 認証状態の監視 (画面の切り替え)
 onAuthStateChanged(auth, (user) => {
     currentUser = user;
+    const preferredPage = currentPageState || getCurrentPageName();
+
     if (user) {
-        // ログイン状態: チャット画面を表示
-        authView.classList.add('hidden');
-        mainChatView.classList.remove('hidden');
+        // ログイン状態: 現在のページ状態を優先し、指定がなければチャット画面を表示
+        applyPageState(preferredPage === 'auth' ? 'auth' : 'chat');
 
         const name = user.displayName || user.email.split('@')[0];
         displayUserName.innerText = name;
@@ -175,8 +232,8 @@ onAuthStateChanged(auth, (user) => {
         }
     } else {
         // 未ログイン状態: ログイン画面を表示
-        authView.classList.remove('hidden');
-        mainChatView.classList.add('hidden');
+        currentPageState = 'auth';
+        applyPageState('auth');
 
         displayUserName.innerText = '';
         if (nameInput) {
@@ -184,6 +241,8 @@ onAuthStateChanged(auth, (user) => {
         }
     }
 });
+
+applyPageState(getCurrentPageName());
 
 // ==============================================================================
 // 2. 画像添付 & 拡大表示
