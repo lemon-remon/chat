@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, where, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, where, getDocs, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -17,6 +17,86 @@ const auth = getAuth(app);
 
 // Global user state
 let currentUser = null;
+
+// ==============================================================================
+// 0. オンライン人数追跡 (Presence / Heartbeat)
+// ==============================================================================
+const HEARTBEAT_INTERVAL_MS = 30000; // 30秒ごとに更新
+const ONLINE_THRESHOLD_MS   = 90000; // 90秒以内に更新があればオンラインとみなす
+let heartbeatInterval = null;
+
+async function setPresence(user, online) {
+    if (!user) return;
+    const presenceRef = doc(db, "presence", user.uid);
+    try {
+        if (online) {
+            await setDoc(presenceRef, {
+                uid: user.uid,
+                name: user.displayName || user.email.split('@')[0],
+                lastSeen: serverTimestamp(),
+                online: true
+            });
+        } else {
+            await deleteDoc(presenceRef);
+        }
+    } catch (e) {
+        console.error("Presence error:", e);
+    }
+}
+
+function startHeartbeat(user) {
+    stopHeartbeat();
+    heartbeatInterval = setInterval(async () => {
+        if (!user) return;
+        const presenceRef = doc(db, "presence", user.uid);
+        try {
+            await setDoc(presenceRef, {
+                uid: user.uid,
+                name: user.displayName || user.email.split('@')[0],
+                lastSeen: serverTimestamp(),
+                online: true
+            }, { merge: true });
+        } catch (e) {
+            console.error("Heartbeat error:", e);
+        }
+    }, HEARTBEAT_INTERVAL_MS);
+}
+
+function stopHeartbeat() {
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+    }
+}
+
+// タブを閉じたときにプレゼンスを削除（ベストエフォート）
+window.addEventListener('beforeunload', () => {
+    stopHeartbeat();
+    if (currentUser) {
+        const presenceRef = doc(db, "presence", currentUser.uid);
+        deleteDoc(presenceRef).catch(() => {});
+    }
+});
+
+// オンライン人数をリアルタイムで購読
+const userCountEl = document.getElementById('userCount');
+onSnapshot(collection(db, "presence"), (snapshot) => {
+    if (!userCountEl) return;
+    const now = Date.now();
+    let onlineCount = 0;
+    snapshot.forEach((d) => {
+        const data = d.data();
+        if (data.lastSeen) {
+            const lastSeenMs = data.lastSeen.toMillis();
+            if (now - lastSeenMs < ONLINE_THRESHOLD_MS) {
+                onlineCount++;
+            }
+        }
+    });
+    // 最低でも自分がいれば1人
+    userCountEl.innerText = Math.max(onlineCount, currentUser ? 1 : 0);
+});
+
 
 // --- 画面切り替え要素 ---
 const authView = document.getElementById('authView');
@@ -160,7 +240,8 @@ if (logoutBtn) {
 }
 
 // 認証状態の監視 (画面の切り替え)
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
+    const prevUser = currentUser;
     currentUser = user;
     if (user) {
         // ログイン状態: チャット画面を表示
@@ -173,6 +254,10 @@ onAuthStateChanged(auth, (user) => {
             nameInput.value = name;
             nameInput.readOnly = true;
         }
+
+        // プレゼンス開始
+        await setPresence(user, true);
+        startHeartbeat(user);
     } else {
         // 未ログイン状態: ログイン画面を表示
         authView.classList.remove('hidden');
@@ -182,8 +267,15 @@ onAuthStateChanged(auth, (user) => {
         if (nameInput) {
             nameInput.value = '';
         }
+
+        // プレゼンス終了
+        stopHeartbeat();
+        if (prevUser) {
+            await setPresence(prevUser, false);
+        }
     }
 });
+
 
 // ==============================================================================
 // 2. 画像添付 & 拡大表示
