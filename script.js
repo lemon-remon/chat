@@ -18,78 +18,9 @@ const auth = getAuth(app);
 // Global user state
 let currentUser = null;
 
-const pageSequence = ['login', 'chat'];
-const currentPageName = document.body.dataset.page || 'login';
-
 // --- 画面切り替え要素 ---
 const authView = document.getElementById('authView');
 const mainChatView = document.getElementById('mainChatView');
-
-function normalizePageName(pageName) {
-    if (pageName === 'auth') return 'login';
-    if (pageSequence.includes(pageName)) return pageName;
-    return currentUser ? 'chat' : 'login';
-}
-
-function getCurrentPageName() {
-    const explicitPage = document.body.dataset.page;
-    if (explicitPage) {
-        return normalizePageName(explicitPage);
-    }
-
-    const hashPage = (location.hash || '').replace('#', '').trim();
-    if (hashPage === 'auth') return 'login';
-    if (pageSequence.includes(hashPage)) return hashPage;
-    return normalizePageName(currentUser ? 'chat' : 'login');
-}
-
-function applyPageState(pageName, { pushHistoryEntry = false } = {}) {
-    const safePage = normalizePageName(pageName);
-    const isAuthPage = safePage === 'login';
-
-    if (authView) authView.classList.toggle('hidden', !isAuthPage);
-    if (mainChatView) mainChatView.classList.toggle('hidden', isAuthPage);
-
-    if (pushHistoryEntry) {
-        const nextHash = `#${safePage === 'login' ? 'auth' : 'chat'}`;
-        if (location.hash !== nextHash) {
-            history.pushState({ page: safePage }, '', nextHash);
-        }
-    }
-}
-
-function navigateToAdjacentPage(direction) {
-    const currentPage = getCurrentPageName();
-    const currentIndex = pageSequence.indexOf(currentPage);
-    const nextIndex = direction === 'next'
-        ? Math.min(currentIndex + 1, pageSequence.length - 1)
-        : Math.max(currentIndex - 1, 0);
-
-    if (nextIndex === currentIndex) return;
-
-    const targetPage = pageSequence[nextIndex];
-    const targetPath = targetPage === 'login' ? 'login.html' : 'chat.html';
-    window.location.assign(targetPath);
-}
-
-window.addEventListener('keydown', (event) => {
-    if (!(event.ctrlKey && event.shiftKey)) return;
-
-    if (event.key === 'ArrowRight') {
-        event.preventDefault();
-        navigateToAdjacentPage('next');
-    }
-
-    if (event.key === 'ArrowLeft') {
-        event.preventDefault();
-        navigateToAdjacentPage('prev');
-    }
-});
-
-window.addEventListener('popstate', (event) => {
-    const nextPage = event.state && event.state.page ? event.state.page : getCurrentPageName();
-    applyPageState(nextPage);
-});
 
 // --- 認証要素 ---
 const authForm = document.getElementById('authForm');
@@ -104,7 +35,6 @@ const displayUserName = document.getElementById('displayUserName');
 const logoutBtn = document.getElementById('logoutBtn');
 
 let isRegisterMode = false;
-let currentPageState = null;
 
 // --- チャット要素 ---
 const nameInput = document.getElementById('nameInput');
@@ -232,39 +162,10 @@ if (logoutBtn) {
 // 認証状態の監視 (画面の切り替え)
 onAuthStateChanged(auth, (user) => {
     currentUser = user;
-
-    if (document.body.dataset.page === 'chat') {
-        if (!user) {
-            window.location.assign('login.html');
-            return;
-        }
-
-        const name = user.displayName || user.email.split('@')[0];
-        displayUserName.innerText = name;
-        if (nameInput) {
-            nameInput.value = name;
-            nameInput.readOnly = true;
-        }
-        return;
-    }
-
-    if (document.body.dataset.page === 'login') {
-        if (user) {
-            window.location.assign('chat.html');
-            return;
-        }
-
-        displayUserName.innerText = '';
-        if (nameInput) {
-            nameInput.value = '';
-        }
-        return;
-    }
-
-    const preferredPage = currentPageState || getCurrentPageName();
-
     if (user) {
-        applyPageState(preferredPage === 'login' ? 'login' : 'chat');
+        // ログイン状態: チャット画面を表示
+        authView.classList.add('hidden');
+        mainChatView.classList.remove('hidden');
 
         const name = user.displayName || user.email.split('@')[0];
         displayUserName.innerText = name;
@@ -273,8 +174,9 @@ onAuthStateChanged(auth, (user) => {
             nameInput.readOnly = true;
         }
     } else {
-        currentPageState = 'login';
-        applyPageState('login');
+        // 未ログイン状態: ログイン画面を表示
+        authView.classList.remove('hidden');
+        mainChatView.classList.add('hidden');
 
         displayUserName.innerText = '';
         if (nameInput) {
@@ -282,8 +184,6 @@ onAuthStateChanged(auth, (user) => {
         }
     }
 });
-
-applyPageState(getCurrentPageName());
 
 // ==============================================================================
 // 2. 画像添付 & 拡大表示
