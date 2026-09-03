@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ロイロノート - ログイン</title>
+    <link rel="icon" type="image/png" href="PNG.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body data-page="login">
+    <div class="background-shape"></div>
+    <div class="background-shape shape-2"></div>
+
+    <div id="authView" class="auth-view-container">
+        <div class="auth-card">
+            <div class="auth-card-header">
+                <div class="auth-logo">💬</div>
+                <h1 id="authTitle">ログイン</h1>
+                <p id="authSubtitle">チャットに参加するにはログインしてください</p>
+            </div>
+            <form id="authForm" class="auth-form" onsubmit="return false;">
+                <div class="input-group">
+                    <input type="text" id="authUsername" placeholder="ユーザー名" maxlength="20" autocomplete="username" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="authPassword" placeholder="パスワード (6文字以上)" autocomplete="current-password" required>
+                </div>
+                <button type="submit" id="authSubmitBtn" class="primary-btn">
+                    ログインする
+                </button>
+                <div class="auth-switch">
+                    <span id="authSwitchPrompt">アカウントをお持ちでないですか？</span>
+                    <a href="#" id="switchToRegister">新規登録</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>
