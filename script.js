@@ -78,24 +78,102 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
-// オンライン人数をリアルタイムで購読
+// オンライン人数 ＆ ユーザー一覧をリアルタイムで購読
 const userCountEl = document.getElementById('userCount');
+const onlineCounterBtn = document.getElementById('onlineCounter');
+const onlineUsersPopup = document.getElementById('onlineUsersPopup');
+const onlinePopupCount = document.getElementById('onlinePopupCount');
+const onlineUsersList = document.getElementById('onlineUsersList');
 let cachedPresenceDocs = [];
 
 function updateOnlineCountDisplay() {
     if (!userCountEl) return;
     const now = Date.now();
-    let onlineCount = 0;
+    const activeUserMap = new Map();
+
     cachedPresenceDocs.forEach((data) => {
-        if (data.lastSeen && typeof data.lastSeen.toMillis === 'function') {
+        if (data && data.uid && data.lastSeen && typeof data.lastSeen.toMillis === 'function') {
             const lastSeenMs = data.lastSeen.toMillis();
             if (now - lastSeenMs < ONLINE_THRESHOLD_MS) {
-                onlineCount++;
+                const name = data.name || '名無し';
+                activeUserMap.set(data.uid, { uid: data.uid, name: name });
             }
         }
     });
-    // 最低でも自分がいれば1人
-    userCountEl.innerText = Math.max(onlineCount, currentUser ? 1 : 0);
+
+    // ログイン中の自分がまだ反映されていなければ追加
+    if (currentUser) {
+        const myName = currentUser.displayName || currentUser.email.split('@')[0];
+        if (!activeUserMap.has(currentUser.uid)) {
+            activeUserMap.set(currentUser.uid, { uid: currentUser.uid, name: myName });
+        }
+    }
+
+    const activeUsers = Array.from(activeUserMap.values());
+    const count = activeUsers.length;
+
+    // 人数バッジ更新
+    userCountEl.innerText = count;
+    if (onlinePopupCount) {
+        onlinePopupCount.innerText = `${count}人`;
+    }
+
+    // ホバー用ツールチップ
+    if (onlineCounterBtn) {
+        if (count > 0) {
+            const names = activeUsers.map(u => u.uid === currentUser?.uid ? `${u.name}(自分)` : u.name).join('、');
+            onlineCounterBtn.title = `オンライン (${count}人): ${names}\nクリックして一覧を表示`;
+        } else {
+            onlineCounterBtn.title = 'クリックしてオンラインメンバーを表示';
+        }
+    }
+
+    // ポップアップ内リスト更新
+    if (onlineUsersList) {
+        if (count === 0) {
+            onlineUsersList.innerHTML = '<li class="online-user-item empty">オンラインのユーザーはいません</li>';
+        } else {
+            // 自分を先頭にソート
+            activeUsers.sort((a, b) => {
+                if (a.uid === currentUser?.uid) return -1;
+                if (b.uid === currentUser?.uid) return 1;
+                return a.name.localeCompare(b.name, 'ja');
+            });
+
+            onlineUsersList.innerHTML = activeUsers.map(user => {
+                const isMe = currentUser && (user.uid === currentUser.uid);
+                const tagHtml = isMe ? '<span class="online-user-tag">あなた</span>' : '';
+                return `
+                    <li class="online-user-item">
+                        <span class="status-dot-sm"></span>
+                        <span class="online-user-name" title="${sanitizeHTML(user.name)}">${sanitizeHTML(user.name)}</span>
+                        ${tagHtml}
+                    </li>
+                `;
+            }).join('');
+        }
+    }
+}
+
+// ポップアップ開閉
+function closeOnlineUsersPopup() {
+    if (onlineUsersPopup) onlineUsersPopup.classList.remove('open');
+    if (onlineCounterBtn) onlineCounterBtn.classList.remove('open');
+}
+
+if (onlineCounterBtn && onlineUsersPopup) {
+    onlineCounterBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // ページマップが開いていれば閉じる
+        if (typeof closePageMap === 'function') closePageMap();
+        const isOpen = onlineUsersPopup.classList.contains('open');
+        if (isOpen) {
+            closeOnlineUsersPopup();
+        } else {
+            onlineUsersPopup.classList.add('open');
+            onlineCounterBtn.classList.add('open');
+        }
+    });
 }
 
 onSnapshot(collection(db, "presence"), (snapshot) => {
@@ -106,8 +184,9 @@ onSnapshot(collection(db, "presence"), (snapshot) => {
     updateOnlineCountDisplay();
 });
 
-// 10秒ごとにタイムアウトしたユーザーを反映して人数を更新
+// 10秒ごとにタイムアウトしたユーザーを反映して人数とリストを更新
 setInterval(updateOnlineCountDisplay, 10000);
+
 
 
 
@@ -140,6 +219,7 @@ function closePageMap() {
 if (pageMapToggleBtn) {
     pageMapToggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        closeOnlineUsersPopup();
         const isOpen = pageMapPopup.classList.contains('open');
         if (isOpen) {
             closePageMap();
@@ -154,6 +234,9 @@ if (pageMapToggleBtn) {
 document.addEventListener('click', (e) => {
     if (!e.target.closest('#pageMapWrapper')) {
         closePageMap();
+    }
+    if (!e.target.closest('#onlineUsersWrapper')) {
+        closeOnlineUsersPopup();
     }
 });
 
@@ -522,9 +605,11 @@ if (deleteModal) {
     });
 }
 
-// Escキーでモーダルを閉じる
+// Escキーでモーダル・ポップアップを閉じる
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+        if (typeof closeOnlineUsersPopup === 'function') closeOnlineUsersPopup();
+        if (typeof closePageMap === 'function') closePageMap();
         if (imageModal && imageModal.classList.contains('active')) {
             closeImageModal();
         }

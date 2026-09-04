@@ -51,9 +51,21 @@
     <div id="mainChatView" class="main-chat-view hidden">
         <!-- トップバー -->
         <div class="top-nav-bar">
-            <div id="onlineCounter" class="online-counter-badge">
-                <span class="status-dot"></span>
-                <span id="userCount">1</span>人がオンライン
+            <div class="online-users-wrapper" id="onlineUsersWrapper">
+                <button id="onlineCounter" class="online-counter-badge" title="クリックでオンラインユーザーを表示">
+                    <span class="status-dot"></span>
+                    <span><span id="userCount">1</span>人がオンライン</span>
+                    <svg class="online-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="online-users-popup" id="onlineUsersPopup">
+                    <div class="online-users-header">
+                        <span>👥 オンラインメンバー</span>
+                        <span id="onlinePopupCount" class="online-count-pill">1人</span>
+                    </div>
+                    <ul class="online-users-list" id="onlineUsersList">
+                        <li class="online-user-item empty">読み込み中...</li>
+                    </ul>
+                </div>
             </div>
             <!-- ページマップ -->
             <div class="page-map-wrapper" id="pageMapWrapper">
