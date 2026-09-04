@@ -238,6 +238,9 @@ document.addEventListener('click', (e) => {
     if (!e.target.closest('#onlineUsersWrapper')) {
         closeOnlineUsersPopup();
     }
+    if (!e.target.closest('.read-status-wrapper')) {
+        document.querySelectorAll('.read-popover.open').forEach(p => p.classList.remove('open'));
+    }
 });
 
 // サムネイルクリックでページ遷移
@@ -703,6 +706,7 @@ if (deleteModal) {
 // Escキーでモーダル・ポップアップを閉じる
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+        document.querySelectorAll('.read-popover.open').forEach(p => p.classList.remove('open'));
         if (typeof closeOnlineUsersPopup === 'function') closeOnlineUsersPopup();
         if (typeof closePageMap === 'function') closePageMap();
         if (imageModal && imageModal.classList.contains('active')) {
@@ -764,7 +768,10 @@ async function sendMessage() {
             timestamp: serverTimestamp(),
             clientId: currentUser.uid,
             uid: currentUser.uid,
-            locked: false
+            locked: false,
+            readers: {
+                [currentUser.uid]: name
+            }
         };
 
         if (image) {
@@ -796,6 +803,35 @@ if (messageInput) {
     });
 }
 
+// 既読記録処理
+const markingReadIds = new Set();
+async function markMessagesAsRead(snapshot) {
+    if (!currentUser) return;
+    const myUid = currentUser.uid;
+    const myName = currentUser.displayName || currentUser.email.split('@')[0];
+
+    for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+        const id = docSnap.id;
+        // 送信者が自分以外 ＆ まだ自分が既読をつけていない ＆ 処理中でない
+        if (data.uid !== myUid && (!data.readers || !data.readers[myUid]) && !markingReadIds.has(id)) {
+            markingReadIds.add(id);
+            try {
+                const msgRef = doc(db, "messages", id);
+                await setDoc(msgRef, {
+                    readers: {
+                        [myUid]: myName
+                    }
+                }, { merge: true });
+            } catch (err) {
+                console.error("既読更新エラー:", err);
+            } finally {
+                markingReadIds.delete(id);
+            }
+        }
+    }
+}
+
 // メッセージリアルタイム購読
 const q = query(collection(db, "messages"), orderBy("timestamp", "desc"));
 
@@ -813,6 +849,11 @@ onSnapshot(q, (snapshot) => {
         const message = docSnapshot.data();
         renderMessage(message, docSnapshot.id);
     });
+
+    // チャット画面を開いているときに未読メッセージを既読にする
+    if (currentUser && mainChatView && !mainChatView.classList.contains('hidden')) {
+        markMessagesAsRead(snapshot);
+    }
 });
 
 // 一括削除
@@ -986,6 +1027,56 @@ function renderMessage(message, id) {
         `;
     }
 
+    // 既読ステータス集計 (送信者本人を除く)
+    const readersObj = message.readers || {};
+    const validReaders = Object.entries(readersObj).filter(([uid]) => uid !== message.uid);
+    const readCount = validReaders.length;
+
+    let readStatusHtml = '';
+    if (readCount === 0) {
+        if (isMyMessage) {
+            readStatusHtml = `
+                <div class="read-status-wrapper">
+                    <span class="read-status-btn unread" title="まだ既読はありません">未読</span>
+                </div>
+            `;
+        }
+    } else {
+        const readerNames = validReaders.map(([uid, name]) => {
+            const isMe = currentUser && (uid === currentUser.uid);
+            return isMe ? `${name}(あなた)` : name;
+        }).join('、');
+
+        const popoverItems = validReaders.map(([uid, name]) => {
+            const isMe = currentUser && (uid === currentUser.uid);
+            const meTag = isMe ? '<span class="read-me-tag">あなた</span>' : '';
+            return `
+                <li class="read-popover-item">
+                    <span class="read-dot"></span>
+                    <span class="read-popover-name" title="${sanitizeHTML(name)}">${sanitizeHTML(name)}</span>
+                    ${meTag}
+                </li>
+            `;
+        }).join('');
+
+        readStatusHtml = `
+            <div class="read-status-wrapper">
+                <button type="button" class="read-status-btn" title="既読 (${readCount}人): ${sanitizeHTML(readerNames)}\nクリックしてメンバーを表示">
+                    <span class="read-check-icon">✓</span> 既読 ${readCount}
+                </button>
+                <div class="read-popover">
+                    <div class="read-popover-header">
+                        <span>既読メンバー</span>
+                        <span class="read-popover-count">${readCount}人</span>
+                    </div>
+                    <ul class="read-popover-list">
+                        ${popoverItems}
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+
     div.innerHTML = `
         <div class="message-header">
             <div class="message-avatar">${sanitizeHTML(initial)}</div>
@@ -1000,7 +1091,24 @@ function renderMessage(message, id) {
         </div>
         ${message.content ? `<div class="message-content">${sanitizeHTML(message.content)}</div>` : ''}
         ${imageHtml}
+        <div class="message-footer">
+            ${readStatusHtml}
+        </div>
     `;
+
+    // 既読ポップオーバーの開閉
+    const readBtn = div.querySelector('.read-status-btn:not(.unread)');
+    const readPopover = div.querySelector('.read-popover');
+    if (readBtn && readPopover) {
+        readBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = readPopover.classList.contains('open');
+            document.querySelectorAll('.read-popover.open').forEach(p => p.classList.remove('open'));
+            if (!isOpen) {
+                readPopover.classList.add('open');
+            }
+        });
+    }
 
     // 画像クリックで拡大モーダル表示
     const imgEl = div.querySelector('.message-image');
@@ -1034,7 +1142,7 @@ function renderMessage(message, id) {
     let tapTimer = null;
 
     div.addEventListener('click', (e) => {
-        if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'IMG') return;
+        if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'IMG' || e.target.closest('.read-popover')) return;
 
         tapCount++;
 
