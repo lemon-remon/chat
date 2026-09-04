@@ -183,14 +183,16 @@ body {
 /* 2. メインチャット画面スタイル */
 /* ============================================== */
 .main-chat-view {
-    padding: 1.5rem 1rem 3rem;
+    padding: 1.5rem 1rem 1.5rem;
     animation: fadeIn 0.4s ease;
+    height: 100vh;
+    overflow: hidden;
 }
 
 /* トップバー */
 .top-nav-bar {
-    max-width: 600px;
-    margin: 0 auto 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto 1rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -421,12 +423,17 @@ body {
 }
 
 .container {
-    max-width: 600px;
+    max-width: 1200px;
     margin: 0 auto;
 }
 
 .main-content-container {
     margin-top: 0.5rem;
+    display: grid;
+    grid-template-columns: 350px minmax(0, 1fr);
+    gap: 1.5rem;
+    height: calc(100vh - 75px);
+    align-items: start;
 }
 
 .input-card {
@@ -437,10 +444,13 @@ body {
     padding: 2rem;
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-soft);
-    margin-bottom: 2rem;
+    margin-bottom: 0;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    grid-column: 1;
+    position: sticky;
+    top: 0;
 }
 
 .input-group {
@@ -640,7 +650,13 @@ button#sendBtn:disabled {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-    padding-bottom: 2rem;
+    padding: 0 0.5rem 2rem 0;
+    grid-column: 2;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-width: 0;
+    scrollbar-width: thin;
 }
 
 .message-card {
@@ -944,16 +960,42 @@ button#sendBtn:disabled {
     background: #dc2626;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 800px) {
     .main-chat-view {
-        padding: 1rem 0.75rem 2rem;
+        padding: 1rem 0.75rem;
+        height: 100vh;
     }
+
+    .main-content-container {
+        grid-template-columns: 1fr;
+        height: calc(100vh - 70px);
+    }
+
+    .input-card,
+    .messages-container {
+        grid-column: 1;
+    }
+
     .input-card {
-        padding: 1.25rem;
+        position: static;
+        margin-bottom: 1rem;
     }
+
+    .messages-container {
+        height: 500px;
+        max-height: calc(100vh - 400px);
+    }
+
     .top-nav-bar {
         margin-bottom: 1rem;
     }
+}
+
+@media (max-width: 480px) {
+    .input-card {
+        padding: 1.25rem;
+    }
+
     .auth-card {
         padding: 2rem 1.5rem;
     }
