@@ -80,13 +80,14 @@ window.addEventListener('beforeunload', () => {
 
 // オンライン人数をリアルタイムで購読
 const userCountEl = document.getElementById('userCount');
-onSnapshot(collection(db, "presence"), (snapshot) => {
+let cachedPresenceDocs = [];
+
+function updateOnlineCountDisplay() {
     if (!userCountEl) return;
     const now = Date.now();
     let onlineCount = 0;
-    snapshot.forEach((d) => {
-        const data = d.data();
-        if (data.lastSeen) {
+    cachedPresenceDocs.forEach((data) => {
+        if (data.lastSeen && typeof data.lastSeen.toMillis === 'function') {
             const lastSeenMs = data.lastSeen.toMillis();
             if (now - lastSeenMs < ONLINE_THRESHOLD_MS) {
                 onlineCount++;
@@ -95,7 +96,19 @@ onSnapshot(collection(db, "presence"), (snapshot) => {
     });
     // 最低でも自分がいれば1人
     userCountEl.innerText = Math.max(onlineCount, currentUser ? 1 : 0);
+}
+
+onSnapshot(collection(db, "presence"), (snapshot) => {
+    cachedPresenceDocs = [];
+    snapshot.forEach((d) => {
+        cachedPresenceDocs.push(d.data());
+    });
+    updateOnlineCountDisplay();
 });
+
+// 10秒ごとにタイムアウトしたユーザーを反映して人数を更新
+setInterval(updateOnlineCountDisplay, 10000);
+
 
 
 // --- 画面切り替え要素 ---
@@ -373,6 +386,8 @@ onAuthStateChanged(auth, async (user) => {
 // ==============================================================================
 // 2. 画像添付 & 拡大表示
 // ==============================================================================
+const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024; // 10MB上限
+
 if (imageInput) {
     imageInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
@@ -380,6 +395,13 @@ if (imageInput) {
 
         if (!file.type.startsWith('image/')) {
             alert('画像ファイルを選択してください。');
+            imageInput.value = '';
+            return;
+        }
+
+        if (file.size > MAX_IMAGE_FILE_SIZE) {
+            alert('画像サイズが大きすぎます（10MB以下の画像を選択してください）。');
+            imageInput.value = '';
             return;
         }
 
@@ -392,6 +414,7 @@ if (imageInput) {
         } catch (err) {
             console.error('画像読み込みエラー:', err);
             alert('画像の読み込みに失敗しました。');
+            clearSelectedImage();
         }
     });
 }
@@ -432,6 +455,11 @@ function resizeAndCompressImage(file, maxWidth, maxHeight, quality) {
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
+
+                // 透過PNG/WebPで透明部分が黒くなるのを防ぐため、白で背景を初期化
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, width, height);
+
                 ctx.drawImage(img, 0, 0, width, height);
 
                 const dataUrl = canvas.toDataURL('image/jpeg', quality);
@@ -493,6 +521,18 @@ if (deleteModal) {
         if (e.target === deleteModal) closeDeleteModal();
     });
 }
+
+// Escキーでモーダルを閉じる
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (imageModal && imageModal.classList.contains('active')) {
+            closeImageModal();
+        }
+        if (deleteModal && deleteModal.classList.contains('active')) {
+            closeDeleteModal();
+        }
+    }
+});
 
 if (confirmDeleteBtn) {
     confirmDeleteBtn.addEventListener('click', async () => {
@@ -712,17 +752,29 @@ function renderMessage(message, id) {
 
     let timeString = '';
     if (message.timestamp) {
-        const date = message.timestamp.toDate();
-        const today = new Date();
-        const isToday = date.getDate() === today.getDate() &&
-            date.getMonth() === today.getMonth() &&
-            date.getFullYear() === today.getFullYear();
-
-        if (isToday) {
-            timeString = date.toLocaleString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-        } else {
-            timeString = date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        let date = null;
+        if (typeof message.timestamp.toDate === 'function') {
+            date = message.timestamp.toDate();
+        } else if (message.timestamp instanceof Date) {
+            date = message.timestamp;
+        } else if (typeof message.timestamp === 'number' || typeof message.timestamp === 'string') {
+            date = new Date(message.timestamp);
         }
+
+        if (date && !isNaN(date.getTime())) {
+            const today = new Date();
+            const isToday = date.getDate() === today.getDate() &&
+                date.getMonth() === today.getMonth() &&
+                date.getFullYear() === today.getFullYear();
+
+            if (isToday) {
+                timeString = date.toLocaleString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                timeString = date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            }
+        }
+    } else {
+        timeString = '送信中...';
     }
 
     const initial = ((message.name || message.content || '名') + '').charAt(0);
@@ -740,9 +792,13 @@ function renderMessage(message, id) {
         ? `<button class="delete-btn" title="削除">×</button>`
         : '';
 
-    // 画像HTML
+    // 画像HTML (安全なURLスキームのみ描画)
     let imageHtml = '';
-    if (message.image) {
+    const isValidImage = message.image && (
+        typeof message.image === 'string' &&
+        (message.image.startsWith('data:image/') || message.image.startsWith('https://') || message.image.startsWith('http://'))
+    );
+    if (isValidImage) {
         imageHtml = `
             <div class="message-image-container">
                 <img src="${message.image}" alt="投稿画像" class="message-image" loading="lazy">
