@@ -471,36 +471,96 @@ onAuthStateChanged(auth, async (user) => {
 // ==============================================================================
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024; // 10MB上限
 
+// 画像ファイルを処理してプレビューにセットする共通関数
+async function processAndSetImage(file) {
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        alert('画像ファイルを選択またはペーストしてください。');
+        if (imageInput) imageInput.value = '';
+        return;
+    }
+
+    if (file.size > MAX_IMAGE_FILE_SIZE) {
+        alert('画像サイズが大きすぎます（10MB以下の画像を選択してください）。');
+        if (imageInput) imageInput.value = '';
+        return;
+    }
+
+    try {
+        // 画像をブラウザ上でリサイズ・圧縮 (最大800px, JPEG品質0.75)
+        const compressedBase64 = await resizeAndCompressImage(file, 800, 800, 0.75);
+        currentImageBase64 = compressedBase64;
+        if (imagePreview) imagePreview.src = compressedBase64;
+        if (imagePreviewContainer) imagePreviewContainer.classList.remove('hidden');
+    } catch (err) {
+        console.error('画像読み込みエラー:', err);
+        alert('画像の読み込みに失敗しました。');
+        clearSelectedImage();
+    }
+}
+
 if (imageInput) {
     imageInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
-        if (!file) return;
-
-        if (!file.type.startsWith('image/')) {
-            alert('画像ファイルを選択してください。');
-            imageInput.value = '';
-            return;
-        }
-
-        if (file.size > MAX_IMAGE_FILE_SIZE) {
-            alert('画像サイズが大きすぎます（10MB以下の画像を選択してください）。');
-            imageInput.value = '';
-            return;
-        }
-
-        try {
-            // 画像をブラウザ上でリサイズ・圧縮 (最大800px, JPEG品質0.75)
-            const compressedBase64 = await resizeAndCompressImage(file, 800, 800, 0.75);
-            currentImageBase64 = compressedBase64;
-            if (imagePreview) imagePreview.src = compressedBase64;
-            if (imagePreviewContainer) imagePreviewContainer.classList.remove('hidden');
-        } catch (err) {
-            console.error('画像読み込みエラー:', err);
-            alert('画像の読み込みに失敗しました。');
-            clearSelectedImage();
+        if (file) {
+            await processAndSetImage(file);
         }
     });
 }
+
+// クリップボードからの画像ペースト（Ctrl+V / Cmd+V）対応
+async function handleImagePaste(e) {
+    // チャット画面が表示されていない場合は処理しない
+    if (!mainChatView || mainChatView.classList.contains('hidden')) return;
+
+    const clipboardData = e.clipboardData || window.clipboardData;
+    if (!clipboardData || !clipboardData.items) return;
+
+    let imageFile = null;
+    for (let i = 0; i < clipboardData.items.length; i++) {
+        const item = clipboardData.items[i];
+        if (item.type && item.type.startsWith('image/')) {
+            imageFile = item.getAsFile();
+            break;
+        }
+    }
+
+    if (imageFile) {
+        e.preventDefault(); // テキストとしての不要なペーストを抑止
+        await processAndSetImage(imageFile);
+    }
+}
+
+if (messageInput) {
+    messageInput.addEventListener('paste', handleImagePaste);
+
+    // ドラッグ＆ドロップ対応
+    messageInput.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        messageInput.style.borderColor = 'var(--primary-color)';
+    });
+    messageInput.addEventListener('dragleave', () => {
+        messageInput.style.borderColor = '';
+    });
+    messageInput.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        messageInput.style.borderColor = '';
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const file = e.dataTransfer.files[0];
+            if (file.type.startsWith('image/')) {
+                await processAndSetImage(file);
+            }
+        }
+    });
+}
+
+// チャット画面表示中なら、メッセージ欄フォーカス外でCtrl+Vされても拾えるようにする
+window.addEventListener('paste', (e) => {
+    if (e.target === messageInput) return; // messageInput自体のpasteリスナーで処理済み
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    handleImagePaste(e);
+});
 
 if (removeImageBtn) {
     removeImageBtn.addEventListener('click', clearSelectedImage);
