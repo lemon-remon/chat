@@ -1089,12 +1089,19 @@ function renderMessage(message, id) {
                 ${lockBtnHtml}
             </div>
         </div>
-        ${message.content ? `<div class="message-content">${sanitizeHTML(message.content)}</div>` : ''}
+        ${message.content ? `<div class="message-content">${formatMessageContent(message.content)}</div>` : ''}
         ${imageHtml}
         <div class="message-footer">
             ${readStatusHtml}
         </div>
     `;
+
+    // リンククリック時にカードのクリック処理（強制削除等）への伝播を防止
+    div.querySelectorAll('.message-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    });
 
     // 既読ポップオーバーの開閉
     const readBtn = div.querySelector('.read-status-btn:not(.unread)');
@@ -1142,7 +1149,12 @@ function renderMessage(message, id) {
     let tapTimer = null;
 
     div.addEventListener('click', (e) => {
-        if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'IMG' || e.target.closest('.read-popover')) return;
+        if (
+            e.target.tagName === 'BUTTON' || e.target.closest('button') ||
+            e.target.tagName === 'A' || e.target.closest('a') ||
+            e.target.tagName === 'IMG' ||
+            e.target.closest('.read-popover')
+        ) return;
 
         tapCount++;
 
@@ -1168,6 +1180,57 @@ function renderMessage(message, id) {
     if (messagesContainer) {
         messagesContainer.appendChild(div);
     }
+}
+
+// メッセージ本文内のURLを検知してクリック可能なリンクに自動変換
+function formatMessageContent(text) {
+    if (typeof text !== 'string') return '';
+
+    // URL（http://, https://, または www. で始まるもの）を検出
+    const urlPattern = /(https?:\/\/[a-zA-Z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+|www\.[a-zA-Z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+)/gi;
+
+    return text.split(urlPattern).map(part => {
+        if (!part) return '';
+        if (/^(https?:\/\/|www\.)/i.test(part)) {
+            let url = part;
+            let trailing = '';
+
+            // 末尾の約物や外側の閉じ括弧を除外
+            while (url.length > 0) {
+                const last = url.slice(-1);
+                if (/[.,;:!?'"<>]/.test(last)) {
+                    trailing = last + trailing;
+                    url = url.slice(0, -1);
+                } else if (last === ')' && (url.match(/\)/g) || []).length > (url.match(/\(/g) || []).length) {
+                    trailing = last + trailing;
+                    url = url.slice(0, -1);
+                } else if (last === ']' && (url.match(/\]/g) || []).length > (url.match(/\[/g) || []).length) {
+                    trailing = last + trailing;
+                    url = url.slice(0, -1);
+                } else {
+                    break;
+                }
+            }
+
+            let href = url;
+            if (/^www\./i.test(href)) {
+                href = 'https://' + href;
+            }
+
+            try {
+                const parsed = new URL(href);
+                if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+                    const safeHref = sanitizeHTML(parsed.href);
+                    const safeText = sanitizeHTML(url);
+                    const safeTrailing = sanitizeHTML(trailing);
+                    return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="message-link">${safeText}</a>${safeTrailing}`;
+                }
+            } catch (e) {
+                // URL解析に失敗した場合は通常テキスト扱い
+            }
+        }
+        return sanitizeHTML(part);
+    }).join('');
 }
 
 function sanitizeHTML(str) {
