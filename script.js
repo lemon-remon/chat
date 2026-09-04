@@ -471,11 +471,51 @@ onAuthStateChanged(auth, async (user) => {
 // ==============================================================================
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024; // 10MB上限
 
+// 画像判定（MIMEタイプまたは拡張子）
+function isImageFile(file) {
+    if (!file) return false;
+    if (file.type && file.type.startsWith('image/')) return true;
+    const name = file.name || '';
+    return /\.(png|jpe?g|gif|webp|bmp|ico|svg|tiff?)$/i.test(name);
+}
+
+// クリップボードまたはDragEventから画像ファイルを抽出
+function extractImageFromDataTransfer(dataTransfer) {
+    if (!dataTransfer) return null;
+
+    // 1. files (エクスプローラーからのファイルコピーや直接ファイルペースト)
+    if (dataTransfer.files && dataTransfer.files.length > 0) {
+        for (let i = 0; i < dataTransfer.files.length; i++) {
+            const file = dataTransfer.files[i];
+            if (isImageFile(file)) {
+                return file;
+            }
+        }
+    }
+
+    // 2. items (Win+Shift+S スクリーンショット、Web画像コピーなど)
+    if (dataTransfer.items && dataTransfer.items.length > 0) {
+        for (let i = 0; i < dataTransfer.items.length; i++) {
+            const item = dataTransfer.items[i];
+            if (item.type && item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (file) return file;
+            }
+            if (item.kind === 'file') {
+                const file = item.getAsFile();
+                if (file && isImageFile(file)) return file;
+            }
+        }
+    }
+
+    return null;
+}
+
 // 画像ファイルを処理してプレビューにセットする共通関数
 async function processAndSetImage(file) {
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
+    if (!isImageFile(file)) {
         alert('画像ファイルを選択またはペーストしてください。');
         if (imageInput) imageInput.value = '';
         return;
@@ -511,23 +551,13 @@ if (imageInput) {
 
 // クリップボードからの画像ペースト（Ctrl+V / Cmd+V）対応
 async function handleImagePaste(e) {
-    // チャット画面が表示されていない場合は処理しない
-    if (!mainChatView || mainChatView.classList.contains('hidden')) return;
-
     const clipboardData = e.clipboardData || window.clipboardData;
-    if (!clipboardData || !clipboardData.items) return;
+    if (!clipboardData) return;
 
-    let imageFile = null;
-    for (let i = 0; i < clipboardData.items.length; i++) {
-        const item = clipboardData.items[i];
-        if (item.type && item.type.startsWith('image/')) {
-            imageFile = item.getAsFile();
-            break;
-        }
-    }
-
+    const imageFile = extractImageFromDataTransfer(clipboardData);
     if (imageFile) {
-        e.preventDefault(); // テキストとしての不要なペーストを抑止
+        e.preventDefault(); // 画像が見つかった場合のみ、不要なファイル名文字列等のペーストを防止
+        console.log("画像ペーストを検出しました:", imageFile.name || "クリップボード画像", imageFile.type, imageFile.size);
         await processAndSetImage(imageFile);
     }
 }
@@ -538,24 +568,29 @@ if (messageInput) {
     // ドラッグ＆ドロップ対応
     messageInput.addEventListener('dragover', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         messageInput.style.borderColor = 'var(--primary-color)';
+        messageInput.style.boxShadow = '0 0 0 4px rgba(139, 92, 246, 0.2)';
     });
-    messageInput.addEventListener('dragleave', () => {
+    messageInput.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         messageInput.style.borderColor = '';
+        messageInput.style.boxShadow = '';
     });
     messageInput.addEventListener('drop', async (e) => {
         e.preventDefault();
+        e.stopPropagation();
         messageInput.style.borderColor = '';
-        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const file = e.dataTransfer.files[0];
-            if (file.type.startsWith('image/')) {
-                await processAndSetImage(file);
-            }
+        messageInput.style.boxShadow = '';
+        const imageFile = extractImageFromDataTransfer(e.dataTransfer);
+        if (imageFile) {
+            await processAndSetImage(imageFile);
         }
     });
 }
 
-// チャット画面表示中なら、メッセージ欄フォーカス外でCtrl+Vされても拾えるようにする
+// ウィンドウ全体でもペースト検知（テキストエリア外でCtrl+Vした場合も拾う）
 window.addEventListener('paste', (e) => {
     if (e.target === messageInput) return; // messageInput自体のpasteリスナーで処理済み
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
