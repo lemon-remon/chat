@@ -465,6 +465,7 @@ onAuthStateChanged(auth, async (user) => {
         // プレゼンス開始
         await setPresence(user, true);
         startHeartbeat(user);
+    } else {
         // ログアウト時はゲームも終了
         stopMultiplayerGame();
         gameView.classList.add('hidden');
