@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, where, getDocs, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { startMultiplayerGame, stopMultiplayerGame } from "./game.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDdQyh3u1ZgzlgbIb3dc1Gx--5Hdkukx6U",
@@ -257,19 +258,20 @@ document.querySelectorAll('.page-thumb').forEach(btn => {
 });
 
 function showGamePage() {
+    if (!currentUser) return;
     mainChatView.classList.add('hidden');
     authView.classList.add('hidden');
     gameView.classList.remove('hidden');
     setPageMapActive('game');
-    // canvasをウィンドウサイズにリサイズ
-    const canvas = document.getElementById('gameCanvas');
-    if (canvas) {
-        canvas.width  = gameView.querySelector('.game-canvas-area').clientWidth;
-        canvas.height = gameView.querySelector('.game-canvas-area').clientHeight;
-    }
+
+    // 2Dマルチプレイゲームの起動
+    startMultiplayerGame(db, currentUser);
 }
 
 function showChatPage() {
+    // 2Dマルチプレイゲームの停止＆退出通知
+    stopMultiplayerGame();
+
     gameView.classList.add('hidden');
     setPageMapActive('chat');
     if (currentUser) {
@@ -282,6 +284,19 @@ function showChatPage() {
 if (backToChatBtn) {
     backToChatBtn.addEventListener('click', showChatPage);
 }
+
+// Ctrl+Shift+G でチャットとゲームを切り替え
+window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && (e.code === 'KeyG' || e.key === 'G' || e.key === 'g')) {
+        e.preventDefault();
+        if (!currentUser) return;
+        if (gameView.classList.contains('hidden')) {
+            showGamePage();
+        } else {
+            showChatPage();
+        }
+    }
+});
 
 // ウィンドウリサイズ時にcanvasも追従
 window.addEventListener('resize', () => {
@@ -450,7 +465,10 @@ onAuthStateChanged(auth, async (user) => {
         // プレゼンス開始
         await setPresence(user, true);
         startHeartbeat(user);
-    } else {
+        // ログアウト時はゲームも終了
+        stopMultiplayerGame();
+        gameView.classList.add('hidden');
+
         // 未ログイン状態: ログイン画面を表示
         authView.classList.remove('hidden');
         mainChatView.classList.add('hidden');
