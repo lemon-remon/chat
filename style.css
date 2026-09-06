@@ -1372,3 +1372,33 @@ button#sendBtn:disabled {
     -webkit-user-select: none;
     cursor: crosshair;
 }
+
+/* モバイル・タッチ用 射撃ボタン */
+.mobile-shoot-btn {
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    font-size: 1.8rem;
+    border: 3px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.mobile-shoot-btn:active {
+    transform: scale(0.92);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.7);
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
