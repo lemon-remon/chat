@@ -28,20 +28,49 @@
                 <p id="authSubtitle">チャットに参加するにはログインしてください</p>
             </div>
             <form id="authForm" class="auth-form" onsubmit="return false;">
-                <div class="input-group">
-                    <input type="text" id="authUsername" placeholder="ユーザー名" maxlength="20" autocomplete="username" required>
-                </div>
-                <div class="input-group">
-                    <input type="password" id="authPassword" placeholder="パスワード (6文字以上)" autocomplete="current-password" required>
-                </div>
-                <button type="submit" id="authSubmitBtn" class="primary-btn">
-                    ログインする
-                </button>
-                <div class="auth-switch">
-                    <span id="authSwitchPrompt">アカウントをお持ちでないですか？</span>
-                    <a href="#" id="switchToRegister">新規登録</a>
-                </div>
-            </form>
+
+    <div class="input-group">
+        <input
+            type="text"
+            id="authUsername"
+            placeholder="ユーザー名"
+            maxlength="20"
+            autocomplete="username"
+            required
+        >
+    </div>
+
+    <div class="input-group">
+        <input
+            type="password"
+            id="authPassword"
+            placeholder="パスワード (6文字以上)"
+            autocomplete="current-password"
+            required
+        >
+    </div>
+
+    <button type="submit" id="authSubmitBtn" class="primary-btn">
+        ログインする
+    </button>
+
+    <button type="button" id="googleLoginBtn" class="google-login-btn">
+        <img
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+            alt="Google"
+            width="20"
+        >
+        Googleでログイン
+    </button>
+
+    <div class="auth-switch">
+        <span id="authSwitchPrompt">
+            アカウントをお持ちでないですか？
+        </span>
+        <a href="#" id="switchToRegister">新規登録</a>
+    </div>
+
+</form>
         </div>
     </div>
 
