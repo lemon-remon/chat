@@ -23,6 +23,47 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
+const googleLoginBtn = document.getElementById("googleLoginBtn");
+
+async function handleGoogleLogin() {
+    if (!googleLoginBtn) return;
+
+    googleLoginBtn.disabled = true;
+    googleLoginBtn.innerText = "ログイン中...";
+
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const user = result.user;
+
+        console.log("Googleログイン成功");
+        console.log("UID:", user.uid);
+        console.log("名前:", user.displayName);
+        console.log("メールアドレス:", user.email);
+
+    } catch (error) {
+        console.error("Googleログインエラー:", error);
+
+        if (error.code === "auth/popup-closed-by-user") {
+            alert("ログインがキャンセルされました。");
+        } else if (error.code === "auth/popup-blocked") {
+            alert("ポップアップがブロックされています。");
+        } else {
+            alert("Googleログインに失敗しました: " + error.message);
+        }
+
+    } finally {
+        googleLoginBtn.disabled = false;
+        googleLoginBtn.innerHTML = `
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                 alt="Google" width="20">
+            Googleでログイン
+        `;
+    }
+}
+
+if (googleLoginBtn) {
+    googleLoginBtn.addEventListener("click", handleGoogleLogin);
+}
 
 // Global user state
 let currentUser = null;
